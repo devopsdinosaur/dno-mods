@@ -10,7 +10,7 @@ See the config options below for a complete list of features and how to use them
 [size=4][b][u]Installation[/u][/b][/size]
 
 [list=1]
-[*][url=https://www.nexusmods.com/tcgcardshopsimulator/mods/8]Install BepInEx[/url]﻿
+[*][url=https://www.nexusmods.com/diplomacyisnotanoption/mods/1]Install BepInEx[/url]﻿
 [*]Download and extract this mod.
 [*]Copy the extracted files to [i]<[[game]]-home>/BepInEx/plugins[/i] folder.
 [*]Start the game and exit.

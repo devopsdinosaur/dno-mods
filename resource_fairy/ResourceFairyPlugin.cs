@@ -89,6 +89,9 @@ public class ResourceFairyPlugin : DDPlugin {
 					continue;
 				}
 				m_prev_day_count = GameState.CommonState.dayCount;
+				if (!Settings.m_enabled.Value) {
+					continue;
+				}
 				increase_resource_value<CurrentBones>(Settings.m_daily_amounts["Bones"].Value);
 				increase_resource_value<CurrentFood>(Settings.m_daily_amounts["Food"].Value);
 				increase_resource_value<CurrentIron>(Settings.m_daily_amounts["Iron"].Value);
