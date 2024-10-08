@@ -1,39 +1,31 @@
 ﻿using BepInEx;
-using BepInEx.Logging;
-using BepInEx.Configuration;
 using HarmonyLib;
 using System;
 using System.Reflection;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
-using UnityEngine.Events;
-using TMPro;
-using Unity.Collections;
-using Unity.Jobs;
-using Unity.Entities;
-using Components.RawComponents;
-using Utility.EnumsStorage;
 using Systems;
 using Utility;
 using Systems.InputSystems;
 using Utility.InterfacesStorage;
 using Systems.GameStateSystems;
+using Unity.Entities;
+using Components.RawComponents;
 
 public static class PluginInfo {
 
-	public const string TITLE = "Testing";
-	public const string NAME = "testing";
-	public const string SHORT_DESCRIPTION = "Just for debugging";
+	public const string TITLE = "Resource Fairy";
+	public const string NAME = "resource_fairy";
+	public const string SHORT_DESCRIPTION = "Every morning the resource fairy leaves a configurable amount of resources under your town's pillow--no teeth required!";
 
 	public const string VERSION = "0.0.1";
 
 	public const string AUTHOR = "devopsdinosaur";
-	public const string GAME_TITLE = "TCG Shop Simulator";
-	public const string GAME = "tcgshop";
+	public const string GAME_TITLE = "Diplomacy is Not an Option";
+	public const string GAME = "dno";
 	public const string GUID = AUTHOR + "." + GAME + "." + NAME;
-	public const string REPO = "tcgshop-mods";
+	public const string REPO = "dno-mods";
 
 	public static Dictionary<string, string> to_dict() {
 		Dictionary<string, string> info = new Dictionary<string, string>();
@@ -45,25 +37,33 @@ public static class PluginInfo {
 }
 
 [BepInPlugin(PluginInfo.GUID, PluginInfo.TITLE, PluginInfo.VERSION)]
-public class TestingPlugin : DDPlugin {
+public class ResourceFairyPlugin : DDPlugin {
 	private Harmony m_harmony = new Harmony(PluginInfo.GUID);
 
 	private void Awake() {
 		logger = this.Logger;
 		try {
+			Settings.Instance.load(this);
+			this.plugin_info = PluginInfo.to_dict();
+			this.create_nexus_page();
 			this.m_harmony.PatchAll();
-			Hotkeys.load();
 			logger.LogInfo($"{PluginInfo.GUID} v{PluginInfo.VERSION} loaded.");
 		} catch (Exception e) {
 			logger.LogError("** Awake FATAL - " + e);
 		}
 	}
 
-	/*
 	class ResourceFairy : MonoBehaviour {
 		static DayCycleSystem m_daycycle_system = null;
 		static bool m_is_running = false;
 		static int m_prev_day_count = -1;
+
+		[HarmonyPatch(typeof(PlayerInputManager), "Awake")]
+		class HarmonyPatch_PlayerInputManager_Awake {
+			private static void Postfix(PlayerInputManager __instance) {
+				__instance.gameObject.AddComponent<ResourceFairy>();
+			}
+		}
 
 		private void Awake() {
 			this.StartCoroutine(this.do_some_magical_fairy_stuff());
@@ -83,67 +83,21 @@ public class TestingPlugin : DDPlugin {
 		}
 
 		private IEnumerator do_some_magical_fairy_stuff() {
-			for (;;) {
+			for (; ; ) {
 				yield return new WaitForSeconds(1f);
 				if (!m_is_running || m_prev_day_count == GameState.CommonState.dayCount) {
 					continue;
 				}
 				m_prev_day_count = GameState.CommonState.dayCount;
-				increase_resource_value<CurrentBones>(10);
-				increase_resource_value<CurrentFood>(10);
-				increase_resource_value<CurrentIron>(10);
-				increase_resource_value<CurrentMoney>(10);
-				increase_resource_value<CurrentSouls>(10);
-				increase_resource_value<CurrentSpirit>(10);
-				increase_resource_value<CurrentStone>(10);
-				increase_resource_value<CurrentWood>(10);
+				increase_resource_value<CurrentBones>(Settings.m_daily_amounts["Bones"].Value);
+				increase_resource_value<CurrentFood>(Settings.m_daily_amounts["Food"].Value);
+				increase_resource_value<CurrentIron>(Settings.m_daily_amounts["Iron"].Value);
+				increase_resource_value<CurrentMoney>(Settings.m_daily_amounts["Money"].Value);
+				increase_resource_value<CurrentSouls>(Settings.m_daily_amounts["Souls"].Value);
+				increase_resource_value<CurrentSpirit>(Settings.m_daily_amounts["Spirit"].Value);
+				increase_resource_value<CurrentStone>(Settings.m_daily_amounts["Stone"].Value);
+				increase_resource_value<CurrentWood>(Settings.m_daily_amounts["Wood"].Value);
 			}
 		}
 	}
-
-	[HarmonyPatch(typeof(PlayerInputManager), "Awake")]
-	class HarmonyPatch_PlayerInputManager_Awake {
-		private static void Postfix(PlayerInputManager __instance) {
-			__instance.gameObject.AddComponent<ResourceFairy>();
-		}
-	}
-	*/
-
-	[HarmonyPatch(typeof(PlayerInputManager), "Update")]
-	class HarmonyPatch_PlayerInputManager_Update {
-		private static void Postfix() {
-			Hotkeys.Updaters.keypress_update();	
-		}
-	}
-
-	[HarmonyPatch(typeof(UI.MainMenuScripts.MainMenu), "Awake")]
-	class HarmonyPatch_UI_MainMenuScripts_MainMenu_Awake {
-		private static void Postfix() {
-			
-		}
-	}
-
-	
-
-	public static void testfunc() {
-		DDPlugin._debug_log("**************** testfunc");
-				
-	}
-
-    /*
-	[HarmonyPatch(typeof(), "")]
-	class HarmonyPatch_ {
-		private static bool Prefix() {
-			
-			return true;
-		}
-	}
-
-	[HarmonyPatch(typeof(), "")]
-	class HarmonyPatch_ {
-		private static void Postfix() {
-			
-		}
-	}
-	*/
 }

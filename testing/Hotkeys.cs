@@ -60,7 +60,7 @@ class Hotkeys {
                 return;
             }
             if (is_hotkey_down(HOTKEY_DEBUG)) {
-                TestingPlugin.CheatRestock.cheat_restock_everything();
+                TestingPlugin.testfunc();
             }
             if (is_hotkey_down(HOTKEY_DEBUG2)) {
                 

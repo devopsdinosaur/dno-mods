@@ -82,6 +82,16 @@
       <HintPath>$(ManagedDataPath)\DOTween.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="Unity.Entities">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>$(ManagedDataPath)\Unity.Entities.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Unity.Properties">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>$(ManagedDataPath)\Unity.Properties.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
   </ItemGroup>
 
   <!-- Add Unity references -->
