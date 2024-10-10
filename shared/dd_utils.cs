@@ -13,25 +13,52 @@ using System.Runtime.InteropServices;
 public abstract class DDPlugin : BaseUnityPlugin {
     protected Dictionary<string, string> plugin_info = null;
     protected static ManualLogSource logger;
+    protected enum LogLevel {
+        None,
+        Error,
+        Warn,
+        Info,
+        Debug
+    }
+    protected static LogLevel m_log_level = LogLevel.Info;
 
     public static void _debug_log(object text) {
-        logger.LogInfo(text);
+        if (m_log_level >= LogLevel.Debug) {
+            logger.LogInfo(text);
+        }
     }
 
     public static void _info_log(object text) {
-        logger.LogInfo(text);
+        if (m_log_level >= LogLevel.Info) {
+            logger.LogInfo(text);
+        }
     }
 
     public static void _warn_log(object text) {
-        logger.LogWarning(text);
+        if (m_log_level >= LogLevel.Warn) {
+            logger.LogWarning(text);
+        }
     }
 
     public static void _error_log(object text) {
-        logger.LogError(text);
+        if (m_log_level >= LogLevel.Error) {
+            logger.LogError(text);
+        }
     }
 
-    public bool is_running_on_dev_box() {
-        return File.Exists(Path.GetFullPath(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "nexus", this.plugin_info["guid"], "template.txt")));
+    public string get_nexus_dir() {
+        try {
+            string path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            foreach (string file in new string[] {"nexus", this.plugin_info["guid"]}) {
+                if (!Directory.Exists(path = Path.Combine(path, file))) {
+                    return null;
+                }
+            }
+            return path;
+        } catch (Exception e) {
+            _error_log("** DDPlugin.get_nexus_dir ERROR - " + e);
+        }
+        return null;
     }
 
     protected void create_nexus_page() {
@@ -39,7 +66,10 @@ public abstract class DDPlugin : BaseUnityPlugin {
             logger.LogWarning("* create_nexus_page WARNING - plugin_info dict must be initialized before calling this method.");
             return;
         }
-        string nexus_dir = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "nexus", this.plugin_info["guid"]));
+        string nexus_dir = this.get_nexus_dir();
+        if (nexus_dir == null) {
+            return;
+        }
         string template_path = Path.Combine(nexus_dir, "template.txt");
         string output_path = Path.Combine(nexus_dir, "generated.txt");
         if (!File.Exists(template_path)) {

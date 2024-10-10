@@ -20,6 +20,8 @@ using Utility;
 using Systems.InputSystems;
 using Utility.InterfacesStorage;
 using Systems.GameStateSystems;
+using Components;
+using UI.New;
 
 public static class PluginInfo {
 
@@ -59,56 +61,6 @@ public class TestingPlugin : DDPlugin {
 		}
 	}
 
-	/*
-	class ResourceFairy : MonoBehaviour {
-		static DayCycleSystem m_daycycle_system = null;
-		static bool m_is_running = false;
-		static int m_prev_day_count = -1;
-
-		private void Awake() {
-			this.StartCoroutine(this.do_some_magical_fairy_stuff());
-		}
-
-		[HarmonyPatch(typeof(DayCycleSystem), "OnStartRunning")]
-		class HarmonyPatch_DayCycleSystem_OnStartRunning {
-			private static void Postfix(DayCycleSystem __instance) {
-				m_daycycle_system = __instance;
-				m_is_running = true;
-				m_prev_day_count = GameState.CommonState.dayCount;
-			}
-		}
-
-		private static void increase_resource_value<T>(int amount) where T : struct, IComponentData, IUserUIResource {
-			ResourceUtility.ChangeCurrentResourceValue(m_daycycle_system.GetComponentDataFromEntity<T>(false), m_daycycle_system.GetSingletonEntity<T>(), amount);
-		}
-
-		private IEnumerator do_some_magical_fairy_stuff() {
-			for (;;) {
-				yield return new WaitForSeconds(1f);
-				if (!m_is_running || m_prev_day_count == GameState.CommonState.dayCount) {
-					continue;
-				}
-				m_prev_day_count = GameState.CommonState.dayCount;
-				increase_resource_value<CurrentBones>(10);
-				increase_resource_value<CurrentFood>(10);
-				increase_resource_value<CurrentIron>(10);
-				increase_resource_value<CurrentMoney>(10);
-				increase_resource_value<CurrentSouls>(10);
-				increase_resource_value<CurrentSpirit>(10);
-				increase_resource_value<CurrentStone>(10);
-				increase_resource_value<CurrentWood>(10);
-			}
-		}
-	}
-
-	[HarmonyPatch(typeof(PlayerInputManager), "Awake")]
-	class HarmonyPatch_PlayerInputManager_Awake {
-		private static void Postfix(PlayerInputManager __instance) {
-			__instance.gameObject.AddComponent<ResourceFairy>();
-		}
-	}
-	*/
-
 	[HarmonyPatch(typeof(PlayerInputManager), "Update")]
 	class HarmonyPatch_PlayerInputManager_Update {
 		private static void Postfix() {
@@ -123,11 +75,50 @@ public class TestingPlugin : DDPlugin {
 		}
 	}
 
+	[HarmonyPatch(typeof(PeoplePopulationSystem), "GetBuildingCapacity")]
+	class HarmonyPatch_PeoplePopulationSystem_GetBuildingCapacity {
+		private static bool Prefix(Entity houseEntity, in HouseBase houseBaseData, BufferFromEntity<MaxHousematesModifier> maxHousematesModifiersBuffersRO, int __result) {
+			DDPlugin._debug_log($"HarmonyPatch_PeoplePopulationSystem_GetBuildingCapacity - result: {__result}");
+			return true;
+		}
+	}
+
+	/*
+	class TestThing : MonoBehaviour {
+		private void Awake() {
+			this.StartCoroutine(this.test_routine());
+		}
+
+		private IEnumerator test_routine() {
+			for (;;) {
+				yield return new WaitForSeconds(1f);
+				DDPlugin._debug_log(Time.time);
+			}
+		}
+	}
 	
+	[HarmonyPatch(typeof(GameCursorController), "StartInit")]
+	class HarmonyPatch_1 {
+		private static bool Prefix(GameCursorController __instance) {
+			__instance.gameObject.AddComponent<TestThing>();
+			return true;
+		}
+	}
+	*/
+	/*
+	[HarmonyPatch(typeof(UpdatePopulationJob), "Run")]
+	class HarmonyPatch_2 {
+		private static bool Prefix() {
+			DDPlugin._debug_log("2");
+			return true;
+		}
+	}
+	*/
 
 	public static void testfunc() {
 		DDPlugin._debug_log("**************** testfunc");
-				
+		//EntityManager entityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
+		
 	}
 
     /*

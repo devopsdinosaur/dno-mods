@@ -6,12 +6,11 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Systems;
-using Utility;
-using Systems.InputSystems;
 using Utility.InterfacesStorage;
 using Systems.GameStateSystems;
 using Unity.Entities;
 using Components.RawComponents;
+using UI.New;
 
 public static class PluginInfo {
 
@@ -19,7 +18,7 @@ public static class PluginInfo {
 	public const string NAME = "resource_fairy";
 	public const string SHORT_DESCRIPTION = "Every morning the resource fairy leaves a configurable amount of resources under your town's pillow--no teeth required!";
 
-	public const string VERSION = "0.0.1";
+	public const string VERSION = "0.0.2";
 
 	public const string AUTHOR = "devopsdinosaur";
 	public const string GAME_TITLE = "Diplomacy is Not an Option";
@@ -43,11 +42,12 @@ public class ResourceFairyPlugin : DDPlugin {
 	private void Awake() {
 		logger = this.Logger;
 		try {
-			Settings.Instance.load(this);
 			this.plugin_info = PluginInfo.to_dict();
+			DDPlugin.m_log_level = (this.get_nexus_dir() != null ? LogLevel.Debug : LogLevel.Info);
+			Settings.Instance.load(this);
 			this.create_nexus_page();
 			this.m_harmony.PatchAll();
-			logger.LogInfo($"{PluginInfo.GUID} v{PluginInfo.VERSION} loaded.");
+			DDPlugin._info_log($"{PluginInfo.GUID} v{PluginInfo.VERSION} loaded.");
 		} catch (Exception e) {
 			logger.LogError("** Awake FATAL - " + e);
 		}
@@ -58,10 +58,14 @@ public class ResourceFairyPlugin : DDPlugin {
 		static bool m_is_running = false;
 		static int m_prev_day_count = -1;
 
-		[HarmonyPatch(typeof(PlayerInputManager), "Awake")]
-		class HarmonyPatch_PlayerInputManager_Awake {
-			private static void Postfix(PlayerInputManager __instance) {
-				__instance.gameObject.AddComponent<ResourceFairy>();
+		[HarmonyPatch(typeof(GameCursorController), "StartInit")]
+		class HarmonyPatch_GameCursorController_StartInit {
+			private static void Postfix(GameCursorController __instance) {
+				try {
+					__instance.gameObject.AddComponent<ResourceFairy>();
+				} catch (Exception e) {
+					DDPlugin._error_log("** HarmonyPatch_GameCursorController_StartInit.Postfix ERROR - " + e);
+				}
 			}
 		}
 
@@ -72,34 +76,104 @@ public class ResourceFairyPlugin : DDPlugin {
 		[HarmonyPatch(typeof(DayCycleSystem), "OnStartRunning")]
 		class HarmonyPatch_DayCycleSystem_OnStartRunning {
 			private static void Postfix(DayCycleSystem __instance) {
-				m_daycycle_system = __instance;
-				m_is_running = true;
-				m_prev_day_count = GameState.CommonState.dayCount;
+				try {
+					m_daycycle_system = __instance;
+					m_is_running = true;
+					m_prev_day_count = GameState.CommonState.dayCount;
+				} catch (Exception e) {
+					DDPlugin._error_log("** HarmonyPatch_DayCycleSystem_OnStartRunning.Postfix ERROR - " + e);
+				}
 			}
 		}
 
-		private static void increase_resource_value<T>(int amount) where T : struct, IComponentData, IUserUIResource {
-			ResourceUtility.ChangeCurrentResourceValue(m_daycycle_system.GetComponentDataFromEntity<T>(false), m_daycycle_system.GetSingletonEntity<T>(), amount);
-		}
+		class ResourceAcessor<T> where T : struct, IComponentData, IUserUIResource {
+			private string m_key;
+			private Entity m_entity;
+			private ComponentDataFromEntity<T> m_component_data;
+			private int m_day_gain;
+			private int m_previous_value;
+			
+			public ResourceAcessor(string key) {
+				this.m_key = key;
+				this.m_entity = m_daycycle_system.GetSingletonEntity<T>();
+				this.m_component_data = m_daycycle_system.GetComponentDataFromEntity<T>(false);
+				this.m_day_gain = 0;
+				this.m_previous_value = -1;
+			}
 
+			public void check_value_delta() {
+				int current_value = this.m_component_data[this.m_entity].CurrentAmount();
+				if (this.m_previous_value == -1) {
+					this.m_previous_value = current_value;
+					return;
+				}
+				int delta = current_value - this.m_previous_value;
+				if (delta > 0) {
+					this.m_day_gain += delta;
+					DDPlugin._debug_log($"{this.m_key}.check_value_delta() - delta: {delta}, day_gain: {this.m_day_gain}");
+				}
+				this.m_previous_value = current_value;
+			}
+			
+			private int get_daily_amount() {
+				switch (Settings.m_daily_method[this.m_key].Value.ToLower()) {
+				case "amount":
+					return Settings.m_daily_flat_amounts[this.m_key].Value;
+				case "multiplier":
+					return Mathf.FloorToInt((float) this.m_day_gain * Settings.m_daily_multipliers[this.m_key].Value);
+				}
+				return 0;
+			}
+
+			public void new_day_change_value() {
+				T stat = this.m_component_data[this.m_entity];
+				int delta = this.get_daily_amount();
+				this.m_day_gain = 0;
+				if (Settings.m_enabled.Value && delta > 0) {
+					stat.IncreaseAmount(delta);
+					DDPlugin._debug_log($"{this.m_key}.change_value({delta}) = {stat.CurrentAmount()}");
+					this.m_component_data[this.m_entity] = stat;
+				}
+				this.m_previous_value = stat.CurrentAmount();
+			}
+		}
+		
 		private IEnumerator do_some_magical_fairy_stuff() {
-			for (; ; ) {
-				yield return new WaitForSeconds(1f);
-				if (!m_is_running || m_prev_day_count == GameState.CommonState.dayCount) {
+			ResourceAcessor<CurrentBones> bones = new ResourceAcessor<CurrentBones>("Bones");
+			ResourceAcessor<CurrentFood> food = new ResourceAcessor<CurrentFood>("Food");
+			ResourceAcessor<CurrentIron> iron = new ResourceAcessor<CurrentIron>("Iron");
+			ResourceAcessor<CurrentMoney> money = new ResourceAcessor<CurrentMoney>("Money");
+			ResourceAcessor<CurrentSouls> souls = new ResourceAcessor<CurrentSouls>("Souls");
+			ResourceAcessor<CurrentSpirit> spirit = new ResourceAcessor<CurrentSpirit>("Spirit");
+			ResourceAcessor<CurrentStone> stone = new ResourceAcessor<CurrentStone>("Stone");
+			ResourceAcessor<CurrentWood> wood = new ResourceAcessor<CurrentWood>("Wood");
+			Dictionary<string, int> prev_values = new Dictionary<string, int>();
+			for (;;) {
+				yield return new WaitForSeconds(0.1f);
+				if (!m_is_running) {
 					continue;
 				}
+				bones.check_value_delta();
+				food.check_value_delta();
+				iron.check_value_delta();
+				money.check_value_delta();
+				souls.check_value_delta();
+				spirit.check_value_delta();
+				stone.check_value_delta();
+				wood.check_value_delta();
+				if (m_prev_day_count == GameState.CommonState.dayCount) {
+					continue;
+				}
+				DDPlugin._debug_log($"Day Change - prev_day: {m_prev_day_count}, cur_day: {GameState.CommonState.dayCount}");
 				m_prev_day_count = GameState.CommonState.dayCount;
-				if (!Settings.m_enabled.Value) {
-					continue;
-				}
-				increase_resource_value<CurrentBones>(Settings.m_daily_amounts["Bones"].Value);
-				increase_resource_value<CurrentFood>(Settings.m_daily_amounts["Food"].Value);
-				increase_resource_value<CurrentIron>(Settings.m_daily_amounts["Iron"].Value);
-				increase_resource_value<CurrentMoney>(Settings.m_daily_amounts["Money"].Value);
-				increase_resource_value<CurrentSouls>(Settings.m_daily_amounts["Souls"].Value);
-				increase_resource_value<CurrentSpirit>(Settings.m_daily_amounts["Spirit"].Value);
-				increase_resource_value<CurrentStone>(Settings.m_daily_amounts["Stone"].Value);
-				increase_resource_value<CurrentWood>(Settings.m_daily_amounts["Wood"].Value);
+				bones.new_day_change_value();
+				food.new_day_change_value();
+				iron.new_day_change_value();
+				money.new_day_change_value();
+				souls.new_day_change_value();
+				spirit.new_day_change_value();
+				stone.new_day_change_value();
+				wood.new_day_change_value();
 			}
 		}
 	}
