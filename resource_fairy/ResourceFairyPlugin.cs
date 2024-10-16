@@ -62,7 +62,7 @@ public class ResourceFairyPlugin : DDPlugin {
 		class HarmonyPatch_GameCursorController_StartInit {
 			private static void Postfix(GameCursorController __instance) {
 				try {
-					__instance.gameObject.AddComponent<ResourceFairy>();
+					//__instance.gameObject.AddComponent<ResourceFairy>();
 				} catch (Exception e) {
 					DDPlugin._error_log("** HarmonyPatch_GameCursorController_StartInit.Postfix ERROR - " + e);
 				}
@@ -110,7 +110,9 @@ public class ResourceFairyPlugin : DDPlugin {
 				int delta = current_value - this.m_previous_value;
 				if (delta > 0) {
 					this.m_day_gain += delta;
-					DDPlugin._debug_log($"{this.m_key}.check_value_delta() - delta: {delta}, day_gain: {this.m_day_gain}");
+					if (Settings.m_enabled.Value) {
+						DDPlugin._debug_log($"{this.m_key}.check_value_delta() - delta: {delta}, day_gain: {this.m_day_gain}");
+					}
 				}
 				this.m_previous_value = current_value;
 			}
