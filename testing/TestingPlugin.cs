@@ -101,6 +101,13 @@ public class TestingPlugin : DDPlugin {
 		}
 
 		public static class ResourceData {
+			private static readonly Dictionary<string, ResourceType> KEY_MAP = new Dictionary<string, ResourceType>() {
+				{"Food", ResourceType.Food},
+				{"Iron", ResourceType.Iron},
+				{"Money", ResourceType.Money},
+				{"Stone", ResourceType.Iron},
+				{"Wood", ResourceType.Wood}
+			};
 			private static Dictionary<ResourceType, Entity> m_storage_entities;
 			private static Dictionary<ResourceType, Entity> m_ui_entities;
 			private static ComponentDataFromEntity<StorageBase> m_storage_base_data;
@@ -117,6 +124,8 @@ public class TestingPlugin : DDPlugin {
 			private static ComponentDataFromEntity<CurrentMoney> m_money_ui_data;
 			private static ComponentDataFromEntity<CurrentStone> m_stone_ui_data;
 			private static ComponentDataFromEntity<CurrentWood> m_wood_ui_data;
+			private static class UiResourceBar {
+				private static Dictionary<ResourceType, TextMeshProUGUI> m_ui_labels; 
 
 			public static void initialize(SystemBase system) {
 				m_storage_entities = new Dictionary<ResourceType, Entity>();
@@ -144,6 +153,22 @@ public class TestingPlugin : DDPlugin {
 				m_money_ui_data = system.GetComponentDataFromEntity<CurrentMoney>(false);
 				m_stone_ui_data = system.GetComponentDataFromEntity<CurrentStone>(false);
 				m_wood_ui_data = system.GetComponentDataFromEntity<CurrentWood>(false);
+				m_ui_labels = new Dictionary<ResourceType, TextMeshProUGUI>() {
+					{ResourceType.People, null},
+					{ResourceType.Food, null},
+					{ResourceType.Wood, null},
+					{ResourceType.Iron, null},
+					{ResourceType.Stone, null},
+					{ResourceType.Souls, null},
+					{ResourceType.Money, null},
+				};
+				Transform parent = UnityUtils.find_by_path("PrimeCanvas GameWorld/Content/PhotoModAffectedUI/TopPanel/ResoursesBar/");
+				foreach (Transform child in parent) {
+					switch (child.name) {
+					case "Population":
+					m_ui_labels[ResourceType.People] = child.Find("Text")
+					}
+				}
 			}
 
 			public static int storage_get_current_value(ResourceType resource_type) {
@@ -268,8 +293,6 @@ public class TestingPlugin : DDPlugin {
 			}
 		}
 
-		PrimeCanvas GameWorld/Content/PhotoModAffectedUI/TopPanel/ResoursesBar/Gold/
-
 		private IEnumerator test_routine() {
 			ResourceData.initialize(m_daycycle_system);
 			Dictionary<ResourceType, ResourceAccessor> resources = new Dictionary<ResourceType, ResourceAccessor>() {
@@ -312,7 +335,6 @@ public class TestingPlugin : DDPlugin {
 	public static void testfunc() {
 		DDPlugin._debug_log("**************** testfunc");
 		//EntityManager entityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
-		
 	}
 
     /*
