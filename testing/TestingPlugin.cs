@@ -80,14 +80,6 @@ public class TestingPlugin : DDPlugin {
 		}
 	}
 
-	[HarmonyPatch(typeof(PeoplePopulationSystem), "GetBuildingCapacity")]
-	class HarmonyPatch_PeoplePopulationSystem_GetBuildingCapacity {
-		private static bool Prefix(Entity houseEntity, in HouseBase houseBaseData, BufferFromEntity<MaxHousematesModifier> maxHousematesModifiersBuffersRO, int __result) {
-			DDPlugin._debug_log($"HarmonyPatch_PeoplePopulationSystem_GetBuildingCapacity - result: {__result}");
-			return true;
-		}
-	}
-
 	class TestThing : MonoBehaviour {
 		static DayCycleSystem m_daycycle_system = null;
 		static bool m_is_running = false;
@@ -108,36 +100,147 @@ public class TestingPlugin : DDPlugin {
 			}
 		}
 
-		class ResourceAccessor<TResource, TReserve, TUi> 
-			where TResource : struct, IComponentData, IResourceStorage 
-			where TReserve : struct, IComponentData, IResourceReserve 
-			where TUi : struct, IComponentData, IUserUIResource
-		{
-			private string m_key;
-			private ResourceType m_resource_type;
-			private Entity m_entity;
-			private ComponentDataFromEntity<TResource> m_component_data;
-			private ComponentDataFromEntity<StorageBase> m_storage_data;
-			private ComponentDataFromEntity<TReserve> m_reserve_data;
-			private Entity m_ui_entity;
-			private ComponentDataFromEntity<TUi> m_ui_data;
+		public static class ResourceData {
+			private static Dictionary<ResourceType, Entity> m_storage_entities;
+			private static Dictionary<ResourceType, Entity> m_ui_entities;
+			private static ComponentDataFromEntity<StorageBase> m_storage_base_data;
+			private static ComponentDataFromEntity<FoodStorage> m_food_storage_data;
+			private static ComponentDataFromEntity<IronStorage> m_iron_storage_data;
+			private static ComponentDataFromEntity<StoneStorage> m_stone_storage_data;
+			private static ComponentDataFromEntity<WoodStorage> m_wood_storage_data;
+			private static ComponentDataFromEntity<FoodReserve> m_food_reserve_data;
+			private static ComponentDataFromEntity<IronReserve> m_iron_reserve_data;
+			private static ComponentDataFromEntity<StoneReserve> m_stone_reserve_data;
+			private static ComponentDataFromEntity<WoodReserve> m_wood_reserve_data;
+			private static ComponentDataFromEntity<CurrentFood> m_food_ui_data;
+			private static ComponentDataFromEntity<CurrentIron> m_iron_ui_data;
+			private static ComponentDataFromEntity<CurrentMoney> m_money_ui_data;
+			private static ComponentDataFromEntity<CurrentStone> m_stone_ui_data;
+			private static ComponentDataFromEntity<CurrentWood> m_wood_ui_data;
+
+			public static void initialize(SystemBase system) {
+				m_storage_entities = new Dictionary<ResourceType, Entity>();
+				m_storage_entities[ResourceType.Food] = system.GetSingletonEntity<FoodStorage>();
+				m_storage_entities[ResourceType.Iron] = system.GetSingletonEntity<IronStorage>();
+				m_storage_entities[ResourceType.Stone] = system.GetSingletonEntity<StoneStorage>();
+				m_storage_entities[ResourceType.Wood] = system.GetSingletonEntity<WoodStorage>();
+				m_ui_entities = new Dictionary<ResourceType, Entity>();
+				m_ui_entities[ResourceType.Food] = system.GetSingletonEntity<CurrentFood>();
+				m_ui_entities[ResourceType.Iron] = system.GetSingletonEntity<CurrentIron>();
+				m_ui_entities[ResourceType.Money] = system.GetSingletonEntity<CurrentMoney>();
+				m_ui_entities[ResourceType.Stone] = system.GetSingletonEntity<CurrentStone>();
+				m_ui_entities[ResourceType.Wood] = system.GetSingletonEntity<CurrentWood>();
+				m_storage_base_data = system.GetComponentDataFromEntity<StorageBase>(false);
+				m_food_storage_data = system.GetComponentDataFromEntity<FoodStorage>(false);
+				m_iron_storage_data = system.GetComponentDataFromEntity<IronStorage>(false);
+				m_stone_storage_data = system.GetComponentDataFromEntity<StoneStorage>(false);
+				m_wood_storage_data = system.GetComponentDataFromEntity<WoodStorage>(false);
+				m_food_reserve_data = system.GetComponentDataFromEntity<FoodReserve>(false);
+				m_iron_reserve_data = system.GetComponentDataFromEntity<IronReserve>(false);
+				m_stone_reserve_data = system.GetComponentDataFromEntity<StoneReserve>(false);
+				m_wood_reserve_data = system.GetComponentDataFromEntity<WoodReserve>(false);
+				m_food_ui_data = system.GetComponentDataFromEntity<CurrentFood>(false);
+				m_iron_ui_data = system.GetComponentDataFromEntity<CurrentIron>(false);
+				m_money_ui_data = system.GetComponentDataFromEntity<CurrentMoney>(false);
+				m_stone_ui_data = system.GetComponentDataFromEntity<CurrentStone>(false);
+				m_wood_ui_data = system.GetComponentDataFromEntity<CurrentWood>(false);
+			}
+
+			public static int storage_get_current_value(ResourceType resource_type) {
+				switch (resource_type) {
+				case ResourceType.Food:
+					return m_food_storage_data[m_storage_entities[ResourceType.Food]].stored;
+				case ResourceType.Iron:
+					return m_iron_storage_data[m_storage_entities[ResourceType.Iron]].stored;
+				case ResourceType.Money:
+					return m_money_ui_data[m_ui_entities[ResourceType.Money]].CurrentAmount();
+				case ResourceType.Stone:
+					return m_stone_storage_data[m_storage_entities[ResourceType.Stone]].stored;
+				case ResourceType.Wood:
+					return m_wood_storage_data[m_storage_entities[ResourceType.Wood]].stored;
+				}
+				return 0;
+			}
+
+			public static int storage_get_free_space(ResourceType resource_type) {
+				switch (resource_type) {
+				case ResourceType.Food:
+					return m_storage_base_data[m_storage_entities[resource_type]].value.Value.foodCapacity - m_food_storage_data[m_storage_entities[ResourceType.Food]].stored - m_food_reserve_data[m_storage_entities[ResourceType.Food]].reserved;
+				case ResourceType.Iron:
+				case ResourceType.Stone:
+				case ResourceType.Wood:
+					return m_storage_base_data[m_storage_entities[resource_type]].value.Value.woodStoneIronCapacity - 
+						m_wood_storage_data[m_storage_entities[ResourceType.Wood]].stored - m_wood_reserve_data[m_storage_entities[ResourceType.Wood]].reserved -
+						m_stone_storage_data[m_storage_entities[ResourceType.Stone]].stored - m_stone_reserve_data[m_storage_entities[ResourceType.Stone]].reserved -
+						m_iron_storage_data[m_storage_entities[ResourceType.Iron]].stored - m_iron_reserve_data[m_storage_entities[ResourceType.Iron]].reserved;
+				case ResourceType.Money:
+					return int.MaxValue;
+				}
+				return 0;
+			}
+
+			public static void storage_increase_value(ResourceType resource_type, int delta) {
+				void increase_value<TStorage, TUi>(ComponentDataFromEntity<TStorage> storage_data, ComponentDataFromEntity<TUi> ui_data) where TStorage : struct, IComponentData, IResourceStorage where TUi : struct, IComponentData, IUserUIResource {
+					TStorage storage_stat = storage_data[m_storage_entities[resource_type]];
+					storage_stat.IncreaseAmount(delta);
+					storage_data[m_storage_entities[resource_type]] = storage_stat;
+					increase_value_ui_only<TUi>(ui_data);
+				}
+				void increase_value_ui_only<TUi>(ComponentDataFromEntity<TUi> ui_data) where TUi : struct, IComponentData, IUserUIResource {
+					TUi ui_stat = ui_data[m_ui_entities[resource_type]];
+					ui_stat.IncreaseAmount(delta);
+					ui_data[m_ui_entities[resource_type]] = ui_stat;
+				}
+				switch (resource_type) {
+				case ResourceType.Food: 
+					increase_value<FoodStorage, CurrentFood>(m_food_storage_data, m_food_ui_data);
+					break;
+				case ResourceType.Iron:
+					increase_value<IronStorage, CurrentIron>(m_iron_storage_data, m_iron_ui_data);
+					break;
+				case ResourceType.Money:
+					increase_value_ui_only<CurrentMoney>(m_money_ui_data);
+					break;
+				case ResourceType.Stone:
+					increase_value<StoneStorage, CurrentStone>(m_stone_storage_data, m_stone_ui_data);
+					break;
+				case ResourceType.Wood:
+					increase_value<WoodStorage, CurrentWood>(m_wood_storage_data, m_wood_ui_data);
+					break;
+				}
+			}
+
+			public static void storage_set_capacity(ResourceType resource_type, int value) {
+				switch (resource_type) {
+				case ResourceType.Food:
+					StorageBase food_storage = m_storage_base_data[m_storage_entities[resource_type]];
+					food_storage.value.Value.foodCapacity = value;
+					m_storage_base_data[m_storage_entities[resource_type]] = food_storage;
+					break;
+				case ResourceType.Iron:
+				case ResourceType.Stone:
+				case ResourceType.Wood:
+					StorageBase wsi_storage = m_storage_base_data[m_storage_entities[resource_type]];
+					wsi_storage.value.Value.woodStoneIronCapacity = value;
+					m_storage_base_data[m_storage_entities[resource_type]] = wsi_storage;
+					break;
+				}
+			}
+		}
+
+		public class ResourceAccessor {
+			public string m_key;
+			public ResourceType m_resource_type;
 			private int m_previous_value;
 
 			public ResourceAccessor(string key, ResourceType resource_type) {
 				this.m_key = key;
 				this.m_resource_type = resource_type;
-				this.m_entity = m_daycycle_system.GetSingletonEntity<TResource>();
-				this.m_component_data = m_daycycle_system.GetComponentDataFromEntity<TResource>(false);
-				this.m_storage_data = m_daycycle_system.GetComponentDataFromEntity<StorageBase>(false);
-				increase storage base?
-				this.m_reserve_data = m_daycycle_system.GetComponentDataFromEntity<TReserve>(false);
-				this.m_ui_entity = m_daycycle_system.GetSingletonEntity<TUi>();
-				this.m_ui_data = m_daycycle_system.GetComponentDataFromEntity<TUi>(false);
 				this.m_previous_value = -1;
 			}
 
 			public int get_value_positive_delta() {
-				int current_value = this.m_component_data[this.m_entity].CurrentAmount();
+				int current_value = ResourceData.storage_get_current_value(this.m_resource_type);
 				if (this.m_previous_value == -1) {
 					this.m_previous_value = current_value;
 					return 0;
@@ -147,20 +250,6 @@ public class TestingPlugin : DDPlugin {
 				return delta;
 			}
 
-			public int free_space_in_storage() {
-				switch (this.m_resource_type) {
-				case ResourceType.Food:
-					return this.m_storage_data[this.m_entity].value.Value.foodCapacity - this.m_component_data[this.m_entity].CurrentAmount() - this.m_reserve_data[this.m_entity].CurrentReserve();
-				case ResourceType.Corpse:
-					return this.m_storage_data[this.m_entity].value.Value.corpseCapacity- this.m_component_data[this.m_entity].CurrentAmount() - this.m_reserve_data[this.m_entity].CurrentReserve();
-				case ResourceType.Wood:
-				case ResourceType.Stone:
-				case ResourceType.Iron:
-					return 0;
-				}
-				return 0;
-			}
-
 			public void adjust_changes() {
 				const float MULTIPLIER = 5.0f;
 				int original_delta = this.get_value_positive_delta();
@@ -168,30 +257,39 @@ public class TestingPlugin : DDPlugin {
 					return;
 				}
 				int added_delta = Mathf.FloorToInt((float) original_delta * MULTIPLIER) - original_delta;
-				int free_space = this.free_space_in_storage();
+				int free_space = ResourceData.storage_get_free_space(this.m_resource_type);
 				added_delta = Mathf.Min(added_delta, free_space);
-				DDPlugin._debug_log($"original_delta: {original_delta}, modified_delta: {added_delta}, free: {free_space}");
-				if (added_delta == 0) {
+				DDPlugin._debug_log($"[{this.m_key}] original_delta: {original_delta}, modified_delta: {added_delta}, free: {free_space}");
+				if (added_delta <= 0) {
 					return;
 				}
-				TResource stat = this.m_component_data[this.m_entity];
-				stat.IncreaseAmount(added_delta);
-				this.m_component_data[this.m_entity] = stat;
-				TUi ui_stat = this.m_ui_data[this.m_ui_entity];
-				ui_stat.IncreaseAmount(added_delta);
-				this.m_ui_data[this.m_ui_entity] = ui_stat;
+				ResourceData.storage_increase_value(this.m_resource_type, added_delta);
+				this.m_previous_value += added_delta;
 			}
 		}
 
+		PrimeCanvas GameWorld/Content/PhotoModAffectedUI/TopPanel/ResoursesBar/Gold/
+
 		private IEnumerator test_routine() {
-			ResourceAccessor<FoodStorage, FoodReserve, CurrentFood> food = new ResourceAccessor<FoodStorage, FoodReserve, CurrentFood>("Food", ResourceType.Food);
-			ResourceAccessor<WoodStorage, WoodReserve, CurrentWood> wood = new ResourceAccessor<WoodStorage, WoodReserve, CurrentWood>("Wood", ResourceType.Wood);	
+			ResourceData.initialize(m_daycycle_system);
+			Dictionary<ResourceType, ResourceAccessor> resources = new Dictionary<ResourceType, ResourceAccessor>() {
+				{ResourceType.Food, new ResourceAccessor("Food", ResourceType.Food)},
+				{ResourceType.Iron, new ResourceAccessor("Iron", ResourceType.Iron)},
+				{ResourceType.Money, new ResourceAccessor("Money", ResourceType.Money)},
+				{ResourceType.Stone, new ResourceAccessor("Stone", ResourceType.Stone)},
+				{ResourceType.Wood, new ResourceAccessor("Wood", ResourceType.Wood)},
+			};
+			foreach (ResourceAccessor resource in resources.Values) {
+				ResourceData.storage_set_capacity(resource.m_resource_type, 999999);
+			}
 			for (;;) {
 				yield return new WaitForSeconds(0.1f);
 				if (!Settings.m_enabled.Value || !m_is_running) {
 					continue;
 				}
-				food.adjust_changes();
+				foreach (ResourceAccessor resource in resources.Values) {
+					resource.adjust_changes();
+				}
 			}
 		}
 	}
