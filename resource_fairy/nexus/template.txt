@@ -5,6 +5,8 @@ Current Version: [[version]] ([url=https://github.com/[[author]]/[[repo]]/blob/m
 
 [[short_description]]
 
+For those (few) using the previous version, you'll notice the config file is changed to reflect the removal of the "Daily" aspect of this mod.  Since all the settings changed, you can safely delete the config file, start the game, quit, then there will be a nice new one with the new settings!
+
 See the config options below for a complete list of features and how to use them.  If you have ideas or issues see the [i]Source Code and Bug Reporting[/i] section at the bottom of the page.  Thanks!
 
 [size=4][b][u]Installation[/u][/b][/size]

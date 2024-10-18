@@ -1,4 +1,9 @@
-﻿# 0.0.1
+﻿# 0.0.3
+
+## Bug Fixes
+- Pretty much everything was broken.  Reworked the system to just use multipliers to increase the amount of resources gained with each increase.
+
+# 0.0.2
 
 ## Features
 - Changed the daily amount of resources to now be three options for each resource type: Method, Amount, and Multiplier (see Nexus page or config file for details)
