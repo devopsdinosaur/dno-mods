@@ -45,8 +45,8 @@ public class ResourceFairyPlugin : DDPlugin {
 		logger = this.Logger;
 		try {
 			this.plugin_info = PluginInfo.to_dict();
-			DDPlugin.m_log_level = (this.get_nexus_dir() != null ? LogLevel.Debug : LogLevel.Info);
 			Settings.Instance.load(this);
+			DDPlugin.set_log_level(Settings.m_log_level.Value);
 			this.create_nexus_page();
 			this.m_harmony.PatchAll();
 			DDPlugin._info_log($"{PluginInfo.GUID} v{PluginInfo.VERSION} loaded.");
