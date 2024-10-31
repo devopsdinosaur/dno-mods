@@ -13,7 +13,7 @@ using UnityEngine.SceneManagement;
 using System.Runtime.InteropServices.WindowsRuntime;
 
 public abstract class DDPlugin : BaseUnityPlugin {
-    protected Dictionary<string, string> plugin_info = null;
+    public Dictionary<string, string> m_plugin_info = null;
     protected static ManualLogSource logger;
     public enum LogLevel {
         None,
@@ -70,7 +70,7 @@ public abstract class DDPlugin : BaseUnityPlugin {
     public string get_nexus_dir() {
         try {
             string path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-            foreach (string file in new string[] {"nexus", this.plugin_info["guid"]}) {
+            foreach (string file in new string[] { "nexus", this.m_plugin_info["guid"] }) {
                 if (!Directory.Exists(path = Path.Combine(path, file))) {
                     return null;
                 }
@@ -83,8 +83,8 @@ public abstract class DDPlugin : BaseUnityPlugin {
     }
 
     protected void create_nexus_page() {
-        if (plugin_info == null) {
-            logger.LogWarning("* create_nexus_page WARNING - plugin_info dict must be initialized before calling this method.");
+        if (m_plugin_info == null) {
+            logger.LogWarning("* create_nexus_page WARNING - m_plugin_info dict must be initialized before calling this method.");
             return;
         }
         string nexus_dir = this.get_nexus_dir();
@@ -98,6 +98,7 @@ public abstract class DDPlugin : BaseUnityPlugin {
         }
         string template_data = File.ReadAllText(template_path);
         Dictionary<string, List<string[]>> categories = new Dictionary<string, List<string[]>>();
+        List<string> hotkey_lines = new List<string>();
         foreach (KeyValuePair<ConfigDefinition, ConfigEntryBase> kvp in this.Config.ToArray()) {
             if (!categories.Keys.Contains(kvp.Key.Section)) {
                 categories[kvp.Key.Section] = new List<string[]>();
@@ -106,7 +107,12 @@ public abstract class DDPlugin : BaseUnityPlugin {
                 kvp.Key.Key,
                 $"[*][b][i]{kvp.Key.Key}[/i][/b] - {kvp.Value.Description.Description}"
             });
+            if (kvp.Key.Section != "Hotkeys") {
+                continue;
+            }
+            hotkey_lines.Add($"[*][b][i]{(kvp.Key.Key.EndsWith("Modifier") ? "" : "[Modifier_Key] + ")}{kvp.Value.DefaultValue.ToString().Replace(",", " or ")}[/i][/b] - {kvp.Key.Key.Replace("Hotkey - ", "").Replace(" Hotkey", "")}");
         }
+        this.m_plugin_info["hotkeys"] = (hotkey_lines.Count > 0 ? $"\n[b][u][size=4]Hotkeys[/size][/u][/b]\n\n[list]\n{string.Join("\n", hotkey_lines)}\n[/list]" : "");
         List<string> ordered_categories = new List<string>(categories.Keys);
         ordered_categories.Sort();
         foreach (List<string[]> items in categories.Values) {
@@ -120,8 +126,8 @@ public abstract class DDPlugin : BaseUnityPlugin {
             }
             lines += "[/list]\n";
         }
-        this.plugin_info["config_options"] = lines;
-        foreach (KeyValuePair<string, string> kvp in this.plugin_info) {
+        this.m_plugin_info["config_options"] = lines;
+        foreach (KeyValuePair<string, string> kvp in this.m_plugin_info) {
             template_data = template_data.Replace("[[" + kvp.Key + "]]", kvp.Value);
         }
         File.WriteAllText(output_path, template_data);
@@ -216,7 +222,7 @@ public static class UnityUtils {
 
     public static void list_ancestors(Transform obj, Action<object> log_method) {
         List<string> strings = new List<string>();
-        for (;;) {
+        for (; ; ) {
             if (obj == null) {
                 break;
             }
@@ -256,7 +262,7 @@ public static class UnityUtils {
             add_line($"\"name\": \"{transform.name}\",");
             add_line("\"components\": [");
             tab_count++;
-            lines.Add(string.Join(",\n", transform.GetComponents<Component>().Select(component => 
+            lines.Add(string.Join(",\n", transform.GetComponents<Component>().Select(component =>
                 tabbed_text($"\"{component.GetType().ToString()}\"")))
             );
             tab_count--;
@@ -293,7 +299,7 @@ public static class UnityUtils {
 
 public static class ReflectionUtils {
 
-    public const BindingFlags BINDING_FLAGS_ALL = BindingFlags.Instance | 
+    public const BindingFlags BINDING_FLAGS_ALL = BindingFlags.Instance |
         BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic |
         BindingFlags.FlattenHierarchy | BindingFlags.InvokeMethod | BindingFlags.CreateInstance;
 
@@ -437,14 +443,14 @@ public static class ReflectionUtils {
     }
 
     public static void generate_trace_patcher(
-        Type type, 
-        string path, 
-        string additional_usings = "", 
+        Type type,
+        string path,
+        string additional_usings = "",
         string[] skip_methods = null,
         bool echo_skip_messages = false
     ) {
         if (skip_methods == null) {
-            skip_methods = new string[] {};
+            skip_methods = new string[] { };
         }
         string type_name = type.Name;
         List<string> lines = new List<string>();
@@ -461,7 +467,7 @@ public class TracePatcher_{type_name} {{
     }}
 
     public static Action<TracerParams> callback = null;
-");   
+");
         List<string> field_accessor_names_list = new List<string>();
         foreach (FieldInfo field in type.GetFields(BINDING_FLAGS_ALL)) {
             string field_name = (field.Name.StartsWith("NativeFieldInfoPtr_") ? field.Name.Substring(19) : field.Name);
@@ -575,6 +581,15 @@ public class PluginUpdater : MonoBehaviour {
         }
         this.m_actions = new_actions;
         this.m_is_dirty = true;
+    }
+
+    public void trigger(string name) {
+        foreach (UpdateInfo info in this.m_actions) {
+            if (info.name == name) {
+                info.elapsed = info.frequency;
+                return;
+            }
+        }
     }
 
     public void Update() {

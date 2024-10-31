@@ -8,6 +8,7 @@ using UnityEngine;
 using Systems;
 using Utility.InterfacesStorage;
 using Unity.Entities;
+using Unity.Collections;
 using Components.RawComponents;
 using UI.New;
 using Utility.EnumsStorage;
@@ -20,7 +21,7 @@ public static class PluginInfo {
 	public const string NAME = "resource_fairy";
 	public const string SHORT_DESCRIPTION = "Configurable multipliers for changing the amount of resources received.  More options to come for increasing max storage/population/etc!";
 
-	public const string VERSION = "0.0.3";
+	public const string VERSION = "0.0.4";
 
 	public const string AUTHOR = "devopsdinosaur";
 	public const string GAME_TITLE = "Diplomacy is Not an Option";
@@ -44,7 +45,7 @@ public class ResourceFairyPlugin : DDPlugin {
 	private void Awake() {
 		logger = this.Logger;
 		try {
-			this.plugin_info = PluginInfo.to_dict();
+			this.m_plugin_info = PluginInfo.to_dict();
 			Settings.Instance.load(this);
 			DDPlugin.set_log_level(Settings.m_log_level.Value);
 			this.create_nexus_page();
@@ -178,8 +179,33 @@ public class ResourceFairyPlugin : DDPlugin {
 				}
 			}
 
-			public static void initialize(SystemBase system) {
+			private static EntityQuery m_all_storage_query;
+
+            public static void initialize(SystemBase system) {
 				m_storage_entities = new Dictionary<ResourceType, Entity>();
+
+				m_all_storage_query = system.EntityManager.CreateEntityQuery(new EntityQueryDesc {
+					All = new ComponentType[] { 
+						ComponentType.ReadWrite<StorageBase>() 
+					},
+					Any = new ComponentType[] {
+						ComponentType.ReadWrite<FoodStorage>(),
+						ComponentType.ReadWrite<WoodStorage>(),
+						ComponentType.ReadWrite<StoneStorage>(),
+						ComponentType.ReadWrite<IronStorage>(),
+						ComponentType.ReadWrite<BonesStorage>(),
+						ComponentType.ReadWrite<SpiritStorage>()
+					},
+					None = new ComponentType[] {
+						ComponentType.ReadOnly<CurrentBuildingForConstruction>(),
+						ComponentType.ReadOnly<BuildingDestroyRequest>(),
+						ComponentType.ReadOnly<DelayedDestroy>(),
+						ComponentType.ReadOnly<UndeadDisabled>(),
+						ComponentType.ReadOnly<InConstruction>()
+					}
+				});
+
+
 				m_storage_entities[ResourceType.Food] = system.GetSingletonEntity<FoodStorage>();
 				m_storage_entities[ResourceType.Iron] = system.GetSingletonEntity<IronStorage>();
 				m_storage_entities[ResourceType.Stone] = system.GetSingletonEntity<StoneStorage>();
@@ -224,7 +250,15 @@ public class ResourceFairyPlugin : DDPlugin {
 			}
 
 			public static int storage_get_current_value(ResourceType resource_type) {
-				switch (resource_type) {
+                
+				//JobEntityBatchExtensions.Run(GatherAllStorageData.get_job(m_daycycle_system, storage_data), m_all_storage_query);
+				NativeArray<Entity> entities = m_all_storage_query.ToEntityArray(Allocator.TempJob);
+				for (int index = 0; index < entities.Length; index++) {
+					Entity entity = entities[index];
+					DDPlugin._debug_log($"food storage[{index}]: {m_food_storage_data[entity].CurrentAmount()}");
+				}
+
+                switch (resource_type) {
 					case ResourceType.Food:
 						return m_food_storage_data[m_storage_entities[ResourceType.Food]].stored;
 					case ResourceType.Iron:

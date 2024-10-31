@@ -3,6 +3,7 @@ using BepInEx.Logging;
 using BepInEx.Configuration;
 using HarmonyLib;
 using System;
+using System.IO;
 using System.Reflection;
 using System.Collections;
 using System.Collections.Generic;
@@ -55,7 +56,7 @@ public class TestingPlugin : DDPlugin {
 	private void Awake() {
 		logger = this.Logger;
 		try {
-			this.plugin_info = PluginInfo.to_dict();
+			this.m_plugin_info = PluginInfo.to_dict();
 			DDPlugin.m_log_level = LogLevel.Debug;
 			Settings.Instance.load(this);
 			this.m_harmony.PatchAll();
@@ -85,11 +86,6 @@ public class TestingPlugin : DDPlugin {
 		private static void Postfix(Entity storageEntity, ResourceType resourceType) {
 			DDPlugin._debug_log($"{storageEntity} {resourceType}");
 		}
-	}
-
-	public static void testfunc() {
-		DDPlugin._debug_log("**************** testfunc");
-		//EntityManager entityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
 	}
 
     /*
