@@ -1,0 +1,3 @@
+[submodule "third-party/UnityDoorstop"]
+	path = third-party/UnityDoorstop
+	url = git@github.com:devopsdinosaur/UnityDoorstop.git

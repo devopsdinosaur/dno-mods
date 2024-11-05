@@ -105,3 +105,24 @@ public class TestingPlugin : DDPlugin {
 	}
 	*/
 }
+
+public class TestSystem : SystemBase {
+    private float m_elapsed = 0;
+    private static StreamWriter m_log = null;
+
+    public static void _debug_log(object text) {
+        if (m_log == null) {
+            string this_dir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            string log_path = Path.Combine(this_dir, "system_test.log");
+            m_log = new StreamWriter(log_path);
+        }
+        m_log.WriteLine(text.ToString());
+    }
+
+    protected override void OnUpdate() {
+        if ((m_elapsed += Time.DeltaTime) < 1.0) {
+            return;
+        }
+        _debug_log(Time.ElapsedTime);
+    }
+}
