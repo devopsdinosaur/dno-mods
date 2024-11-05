@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="$(SolutionDir)\solution_private.targets" />
+  <Import Project="$(SolutionDir)\solution.targets" />
+  <ItemGroup>
+    <Content Include="$(GamePath)\doorstop_config.ini" Link="config\doorstop_config.ini" />
+    <Content Include="$(GamePath)\$(ProjectName)\$(ProjectName).log" Link="logs\$(ProjectName).log" />
+  </ItemGroup>
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <ItemGroup>
+      <AllFiles Include="$(TargetDir)**\*.*" Exclude="$(TargetDir)**\*.pdb" />
+	  </ItemGroup>
+    <Copy SourceFiles="@(AllFiles)" DestinationFolder="$(GamePath)\$(ProjectName)\%(RecursiveDir)" />
+	  <Delete Files="$(ProjectDir)\bin\$(TargetName).zip" />
+    <Copy SourceFiles="@(AllFiles)" DestinationFolder="$(TargetDir)..\Release\%(RecursiveDir)"></Copy>
+    <ZipDirectory SourceDirectory="$(TargetDir)..\Release" DestinationFile="$(ProjectDir)\bin\$(TargetName).zip" />
+    <RemoveDir Directories="$(TargetDir)..\Release" />
+  </Target>
+</Project>
