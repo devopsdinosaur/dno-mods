@@ -249,14 +249,28 @@ public class ResourceFairyPlugin : DDPlugin {
 				return 0;
 			}
 
-			public static int storage_get_current_value(ResourceType resource_type) {
+			private static int __internal_storage_get_current_value__<T>(ComponentDataFromEntity<T> data) where T : struct, IComponentData, IResourceStorage {
+				int result = 0;
+                NativeArray<Entity> entities = m_all_storage_query.ToEntityArray(Allocator.TempJob);
+                for (int index = 0; index < entities.Length; index++) {
+                    Entity entity = entities[index];
+					DDPlugin._debug_log($"data[{index}] = {data[entity].CurrentAmount()}");
+					result += data[entity].CurrentAmount();
+                }
+				return result;
+            }
+
+
+            public static int storage_get_current_value(ResourceType resource_type) {
                 
 				//JobEntityBatchExtensions.Run(GatherAllStorageData.get_job(m_daycycle_system, storage_data), m_all_storage_query);
-				NativeArray<Entity> entities = m_all_storage_query.ToEntityArray(Allocator.TempJob);
-				for (int index = 0; index < entities.Length; index++) {
-					Entity entity = entities[index];
-					DDPlugin._debug_log($"food storage[{index}]: {m_food_storage_data[entity].CurrentAmount()}");
-				}
+				//NativeArray<Entity> entities = m_all_storage_query.ToEntityArray(Allocator.TempJob);
+				//for (int index = 0; index < entities.Length; index++) {
+				//	Entity entity = entities[index];
+				//	DDPlugin._debug_log($"food storage[{index}]: {m_food_storage_data[entity].CurrentAmount()}");
+				//}
+				DDPlugin._debug_log($"food: {__internal_storage_get_current_value__<FoodStorage>(m_food_storage_data)}");
+                DDPlugin._debug_log($"stone: {__internal_storage_get_current_value__<StoneStorage>(m_stone_storage_data)}");
 
                 switch (resource_type) {
 					case ResourceType.Food:
