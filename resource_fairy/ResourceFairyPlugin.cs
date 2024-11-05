@@ -180,8 +180,10 @@ public class ResourceFairyPlugin : DDPlugin {
 			}
 
 			private static EntityQuery m_all_storage_query;
+			private static EntityQuery m_all_workers_query;
+			private static ComponentDataFromEntity<WorkerCatchResource> m_workers_data;
 
-            public static void initialize(SystemBase system) {
+			public static void initialize(SystemBase system) {
 				m_storage_entities = new Dictionary<ResourceType, Entity>();
 
 				m_all_storage_query = system.EntityManager.CreateEntityQuery(new EntityQueryDesc {
@@ -205,6 +207,12 @@ public class ResourceFairyPlugin : DDPlugin {
 					}
 				});
 
+				m_all_workers_query = system.EntityManager.CreateEntityQuery(new EntityQueryDesc {
+					All = new ComponentType[] {
+						ComponentType.ReadWrite<WorkerCatchResource>()
+					}
+				});
+				m_workers_data = m_daycycle_system.GetComponentDataFromEntity<WorkerCatchResource>(false);
 
 				m_storage_entities[ResourceType.Food] = system.GetSingletonEntity<FoodStorage>();
 				m_storage_entities[ResourceType.Iron] = system.GetSingletonEntity<IronStorage>();
@@ -260,19 +268,27 @@ public class ResourceFairyPlugin : DDPlugin {
 				return result;
             }
 
+			public static int storage_get_current_value(ResourceType resource_type) {
 
-            public static int storage_get_current_value(ResourceType resource_type) {
-                
 				//JobEntityBatchExtensions.Run(GatherAllStorageData.get_job(m_daycycle_system, storage_data), m_all_storage_query);
 				//NativeArray<Entity> entities = m_all_storage_query.ToEntityArray(Allocator.TempJob);
 				//for (int index = 0; index < entities.Length; index++) {
 				//	Entity entity = entities[index];
 				//	DDPlugin._debug_log($"food storage[{index}]: {m_food_storage_data[entity].CurrentAmount()}");
 				//}
-				DDPlugin._debug_log($"food: {__internal_storage_get_current_value__<FoodStorage>(m_food_storage_data)}");
-                DDPlugin._debug_log($"stone: {__internal_storage_get_current_value__<StoneStorage>(m_stone_storage_data)}");
 
-                switch (resource_type) {
+				//DDPlugin._debug_log($"food: {__internal_storage_get_current_value__<FoodStorage>(m_food_storage_data)}");
+				//DDPlugin._debug_log($"stone: {__internal_storage_get_current_value__<StoneStorage>(m_stone_storage_data)}");
+
+				// ** WorkerDeliveryProcessJob - lines ~490 (BerryPicker, Woodcutter, etc)
+
+				NativeArray<Entity> entities = m_all_workers_query.ToEntityArray(Allocator.TempJob);
+				for (int index = 0; index < entities.Length; index++) {
+					Entity entity = entities[index];
+					DDPlugin._debug_log($"data[{index}] = type: {m_workers_data[entity].type}, count: {m_workers_data[entity].count}");
+				}
+
+				switch (resource_type) {
 					case ResourceType.Food:
 						return m_food_storage_data[m_storage_entities[ResourceType.Food]].stored;
 					case ResourceType.Iron:
