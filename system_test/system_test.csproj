@@ -9,7 +9,8 @@
     <ItemGroup>
       <AllFiles Include="$(TargetDir)**\*.*" Exclude="$(TargetDir)**\*.pdb" />
 	  </ItemGroup>
-    <Copy SourceFiles="@(AllFiles)" DestinationFolder="$(GamePath)\$(ProjectName)\%(RecursiveDir)" />
+    <MakeDir Directories="$(GamePath)\BepInEx\ecs_plugins" />
+    <Copy SourceFiles="@(AllFiles)" DestinationFolder="$(GamePath)\BepInEx\ecs_plugins\%(RecursiveDir)" />
 	  <Delete Files="$(ProjectDir)\bin\$(TargetName).zip" />
     <Copy SourceFiles="@(AllFiles)" DestinationFolder="$(TargetDir)..\Release\%(RecursiveDir)"></Copy>
     <ZipDirectory SourceDirectory="$(TargetDir)..\Release" DestinationFile="$(ProjectDir)\bin\$(TargetName).zip" />

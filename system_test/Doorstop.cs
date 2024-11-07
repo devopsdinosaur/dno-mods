@@ -7,7 +7,7 @@ namespace Doorstop {
     class Entrypoint {
         
         public static void Start() {
-            EcsPreloader.Instance.load_plugins();  
+            //EcsPreloader.Instance.load_plugins();  
         }
 
 
@@ -23,7 +23,7 @@ namespace Doorstop {
         }
     }
 }
-
+/*
 public class EcsPreloader {
     public const string OFFSET_TO_BEPINEX = "../BepInEx";
 
@@ -56,5 +56,29 @@ public class EcsPreloader {
 
     public void load_plugins() {
 
+    }
+}
+*/
+
+public class TestSystem : SystemBase {
+    private static StreamWriter m_log = null;
+    private float m_elapsed = 0;
+    
+    public static void _debug_log(object text) {
+        if (m_log == null) {
+            string this_dir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            string log_path = Path.Combine(this_dir, "system_test.log");
+            m_log = new StreamWriter(log_path);
+        }
+        m_log.WriteLine(text.ToString());
+        m_log.Flush();
+    }
+
+    protected override void OnUpdate() {
+        if ((this.m_elapsed += Time.DeltaTime) < 1.0) {
+            return;
+        }
+        this.m_elapsed = 0;
+        _debug_log(Time.ElapsedTime);
     }
 }
