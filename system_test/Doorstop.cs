@@ -39,10 +39,10 @@ public class TestSystem : SystemBase {
         }
         this.m_elapsed = 0;
         _debug_log(Time.ElapsedTime);
-        if (this.m_plugin == null && (this.m_plugin = (ResourceFairyInterface) DDPlugin.get_instance(LINKED_PLUGIN_NAME, LINKED_CLASS_NAME)) == null) {
+        if (this.m_plugin == null && (this.m_plugin = (ResourceFairyInterface) DDPlugin.Locator.locate("resource_fairy")) == null) {
             return;
         }
         _debug_log(".");
-        ((ResourceFairyInterface) this.m_plugin).testfunc("Hiya buddy!");
+        this.m_plugin.testfunc("Hiya buddy!");
     }
 }

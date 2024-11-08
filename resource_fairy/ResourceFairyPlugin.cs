@@ -14,6 +14,7 @@ using UI.New;
 using Utility.EnumsStorage;
 using Components;
 using TMPro;
+using UnityEngine.SceneManagement;
 
 public static class PluginInfo {
 
@@ -79,8 +80,23 @@ public class ResourceFairyPlugin : DDPlugin, ResourceFairyInterface {
 
         [HarmonyPatch(typeof(Systems.InputSystems.PlayerInputManager), "Update")]
         class HarmonyPatch_PlayerInputManager_Update {
+			//static GameObject m_parent = null;
 			private static void Postfix() {
 				//DDPlugin._debug_log($"Instance: {DDPlugin.Instance}");
+				//if (m_parent != null) {
+				//	return;
+				//}
+				//m_parent = new GameObject("TestObject");
+				//m_parent.transform.SetParent(null);
+				//Scene scene = SceneManager.CreateScene("DDPlugin_Scene");
+				//SceneManager.MoveGameObjectToScene(m_parent, scene);
+				//foreach (GameObject root in SceneManager.GetActiveScene().GetRootGameObjects()) {
+				//	DDPlugin._debug_log(root.name);
+				//	m_parent = new GameObject("TestObject");
+				//	m_parent.transform.SetParent(root.transform);
+				//	GameObject.DontDestroyOnLoad(m_parent);
+				//	break;
+				//}
 			}
         }
 
