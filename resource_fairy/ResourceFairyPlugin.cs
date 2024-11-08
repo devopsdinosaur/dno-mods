@@ -39,10 +39,10 @@ public static class PluginInfo {
 }
 
 [BepInPlugin(PluginInfo.GUID, PluginInfo.TITLE, PluginInfo.VERSION)]
-public class ResourceFairyPlugin : DDPlugin {
+public class ResourceFairyPlugin : DDPlugin, ResourceFairyInterface {
 	private Harmony m_harmony = new Harmony(PluginInfo.GUID);
 
-	private void Awake() {
+	protected override void awake() {
 		logger = this.Logger;
 		try {
 			this.m_plugin_info = PluginInfo.to_dict();
@@ -52,8 +52,13 @@ public class ResourceFairyPlugin : DDPlugin {
 			this.m_harmony.PatchAll();
 			DDPlugin._info_log($"{PluginInfo.GUID} v{PluginInfo.VERSION} loaded.");
 		} catch (Exception e) {
-			logger.LogError("** Awake FATAL - " + e);
+			logger.LogError("** awake FATAL - " + e);
 		}
+	}
+
+	public int testfunc(string text) {
+		DDPlugin._debug_log($"From my pal: '{text}'");
+		return 123;
 	}
 
 	class ResourceFairy : MonoBehaviour {
@@ -68,9 +73,16 @@ public class ResourceFairyPlugin : DDPlugin {
 			}
 		}
 
-		private void Awake() {
+        private void Awake() {
 			this.StartCoroutine(this.main_routine());
 		}
+
+        [HarmonyPatch(typeof(Systems.InputSystems.PlayerInputManager), "Update")]
+        class HarmonyPatch_PlayerInputManager_Update {
+			private static void Postfix() {
+				//DDPlugin._debug_log($"Instance: {DDPlugin.Instance}");
+			}
+        }
 
 		[HarmonyPatch(typeof(DayCycleSystem), "OnStartRunning")]
 		class HarmonyPatch_DayCycleSystem_OnStartRunning {

@@ -53,7 +53,7 @@ public static class PluginInfo {
 public class TestingPlugin : DDPlugin {
 	private Harmony m_harmony = new Harmony(PluginInfo.GUID);
 
-	private void Awake() {
+	protected override void awake() {
 		logger = this.Logger;
 		try {
 			this.m_plugin_info = PluginInfo.to_dict();
@@ -63,7 +63,7 @@ public class TestingPlugin : DDPlugin {
 			Hotkeys.load();
 			logger.LogInfo($"{PluginInfo.GUID} v{PluginInfo.VERSION} loaded.");
 		} catch (Exception e) {
-			logger.LogError("** Awake FATAL - " + e);
+			logger.LogError("** awake FATAL - " + e);
 		}
 	}
 

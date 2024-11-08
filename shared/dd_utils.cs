@@ -13,6 +13,73 @@ using UnityEngine.SceneManagement;
 using System.Runtime.InteropServices.WindowsRuntime;
 
 public abstract class DDPlugin : BaseUnityPlugin {
+
+    public class Locator {
+        private const string NAME = "DDPlugin_Locator_Object";
+        private static GameObject m_parent = null;
+        public class IdComponent : MonoBehaviour {
+            public DDPlugin m_plugin = null;
+            public bool m_destroy_self = false;
+
+            private void Update() {
+                if (m_destroy_self) {
+                    GameObject.Destroy(this);
+                }
+            }
+        }
+
+        private static GameObject ensure_parent_object() {
+            if (m_parent != null) {
+                return m_parent;
+            }
+            foreach (IdComponent id in Resources.FindObjectsOfTypeAll<IdComponent>()) {
+                m_parent = id.gameObject;
+                break;
+            }
+            if (m_parent == null) {
+                m_parent = new GameObject(NAME);
+                GameObject.DontDestroyOnLoad(m_parent);
+                m_parent.SetActive(true);
+            }
+            return m_parent;
+        }
+
+        public static DDPlugin locate(string name) {
+            foreach (IdComponent id in Resources.FindObjectsOfTypeAll<IdComponent>()) {
+                try {
+                    if (id?.m_plugin.m_plugin_info != null && id.m_plugin.m_plugin_info["name"] == name) {
+                        return id.m_plugin;
+                    }
+                } catch {
+                    try {
+                        id.m_destroy_self = true;
+                    } catch {}
+                }
+            }
+            return null;
+        }
+
+        public static void register(DDPlugin plugin) { 
+            ensure_parent_object().AddComponent<IdComponent>().m_plugin = plugin;
+            DDPlugin._debug_log($"id: {m_parent.GetHashCode()}");
+        }
+
+        public static void unregister(DDPlugin plugin) {
+            foreach (IdComponent id in Resources.FindObjectsOfTypeAll<IdComponent>()) {
+                if (id.m_plugin == plugin) {
+                    id.m_destroy_self = true;
+                    return;
+                }
+            }
+        }
+    }
+
+    private static DDPlugin m_instance = null;
+    public static DDPlugin Instance {
+        get {
+            return m_instance;
+        }
+    }
     public Dictionary<string, string> m_plugin_info = null;
     protected static ManualLogSource logger;
     public enum LogLevel {
@@ -30,7 +97,38 @@ public abstract class DDPlugin : BaseUnityPlugin {
         {"debug", LogLevel.Debug},
     };
     protected static LogLevel m_log_level = LogLevel.Info;
+    
+    private void Awake() {
+        this.awake();
+        //Locator.register(this);
+        m_instance = this;
+        _debug_log($"************* Instance: {DDPlugin.Instance}");
+        GameObject obj = new GameObject("ThisShouldBeVisible");
+        _debug_log(obj.name);
+        obj.AddComponent<CircleCollider2D>();
+        GameObject.DontDestroyOnLoad(obj);
+        obj.SetActive(true);
+    }
 
+    protected abstract void awake();
+
+    public static object get_instance(string assembly_name, string class_name) {
+        foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies()) {
+            if (assembly.GetName().Name == assembly_name) {
+                UnityEngine.Debug.Log(assembly.GetName().Name);
+                foreach (Type type in assembly.GetExportedTypes()) {
+                    UnityEngine.Debug.Log(type.Name);
+                    if (type.Name == class_name) {
+                        object result = type.GetProperty("Instance", BindingFlags.Public | BindingFlags.Static).GetValue(null);
+                        UnityEngine.Debug.Log($"result: {result}, type: {result.GetType()}");
+                        return null;
+                    }
+                }
+            }
+        }
+        return null;
+    }
+    
     public static LogLevel set_log_level(LogLevel level) {
         _info_log($"Setting log level to {level.ToString().ToUpper()}.");
         return (m_log_level = level);

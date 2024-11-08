@@ -5,6 +5,10 @@
     <Content Include="$(GamePath)\doorstop_config.ini" Link="config\doorstop_config.ini" />
     <Content Include="$(GamePath)\$(ProjectName)\$(ProjectName).log" Link="logs\$(ProjectName).log" />
   </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\shared\dd_utils.cs" Link="shared\dd_utils.cs" />
+    <Compile Include="..\resource_fairy\ResourceFairyInterface.cs" Link="resource_fairy\ResourceFairyInterface.cs" />
+  </ItemGroup>
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
     <ItemGroup>
       <AllFiles Include="$(TargetDir)**\*.*" Exclude="$(TargetDir)**\*.pdb" />
