@@ -12,6 +12,10 @@ using System.Runtime.InteropServices;
 using UnityEngine.SceneManagement;
 using System.Runtime.InteropServices.WindowsRuntime;
 
+public interface DDPluginInterface {
+    public string get_name();
+}
+
 public abstract class DDPlugin : BaseUnityPlugin {
 
     public class Locator {
@@ -21,14 +25,7 @@ public abstract class DDPlugin : BaseUnityPlugin {
         private static Scene m_scene;
 
         public class IdComponent : MonoBehaviour {
-            public DDPlugin m_plugin = null;
-            public bool m_destroy_self = false;
-
-            private void Update() {
-                if (m_destroy_self) {
-                    GameObject.Destroy(this);
-                }
-            }
+            public DDPluginInterface m_interface = null;
         }
 
         private static GameObject ensure_parent_object() {
@@ -48,33 +45,26 @@ public abstract class DDPlugin : BaseUnityPlugin {
             return m_parent;
         }
 
-        public static DDPlugin locate(string name) {
-            foreach (IdComponent id in Resources.FindObjectsOfTypeAll<IdComponent>()) {
-                try {
-                    if (id?.m_plugin.m_plugin_info != null && id.m_plugin.m_plugin_info["name"] == name) {
-                        return id.m_plugin;
+        public static DDPluginInterface locate(string name) {
+            Scene scene = SceneManager.GetSceneByName(SCENE_NAME);
+            if (scene.IsValid()) {
+                UnityEngine.Debug.Log(scene.name);
+                foreach (GameObject root in scene.GetRootGameObjects()) {
+                    UnityEngine.Debug.Log(root.name);
+                    if (root.name == OBJECT_NAME) {
+                        foreach (Component component in root.GetComponents<Component>()) {
+                            UnityEngine.Debug.Log(ReflectionUtils.get_field_value(component, "m_interface"));
+                        }
                     }
-                } catch {
-                    try {
-                        id.m_destroy_self = true;
-                    } catch {}
                 }
             }
             return null;
         }
 
-        public static void register(DDPlugin plugin) { 
-            ensure_parent_object().AddComponent<IdComponent>().m_plugin = plugin;
-            DDPlugin._debug_log($"id: {m_parent.GetHashCode()}");
-        }
-
-        public static void unregister(DDPlugin plugin) {
-            foreach (IdComponent id in Resources.FindObjectsOfTypeAll<IdComponent>()) {
-                if (id.m_plugin == plugin) {
-                    id.m_destroy_self = true;
-                    return;
-                }
-            }
+        public static IdComponent register(DDPluginInterface iface) { 
+            IdComponent id = ensure_parent_object().AddComponent<IdComponent>();
+            id.m_interface = iface;
+            return id;
         }
     }
 
@@ -96,12 +86,12 @@ public abstract class DDPlugin : BaseUnityPlugin {
     };
     protected static LogLevel m_log_level = LogLevel.Info;
     
-    private void Awake() {
-        this.awake();
-        Locator.register(this);
-    }
+    //private void Awake() {
+    //    this.awake();
+    //    Locator.register(this);
+    //}
 
-    protected abstract void awake();
+    //protected abstract void awake();
     
     public static LogLevel set_log_level(LogLevel level) {
         _info_log($"Setting log level to {level.ToString().ToUpper()}.");
@@ -366,6 +356,10 @@ public static class UnityUtils {
             strings.Add($"[{index++}] method: {frame.GetMethod().Name}, file: {frame.GetFileName()}, line: {frame.GetFileLineNumber()}");
         }
         log_method.Invoke(string.Join("\n", strings));
+    }
+
+    public static bool is_valid(object obj) {
+        return (obj != null && obj is UnityEngine.Object unity_obj && (bool) unity_obj);
     }
 }
 

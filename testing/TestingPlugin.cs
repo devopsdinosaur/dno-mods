@@ -35,10 +35,10 @@ public static class PluginInfo {
 	public const string VERSION = "0.0.1";
 
 	public const string AUTHOR = "devopsdinosaur";
-	public const string GAME_TITLE = "TCG Shop Simulator";
-	public const string GAME = "tcgshop";
+	public const string GAME_TITLE = "Diplomacy is Not an Option";
+	public const string GAME = "dno";
 	public const string GUID = AUTHOR + "." + GAME + "." + NAME;
-	public const string REPO = "tcgshop-mods";
+	public const string REPO = "dno-mods";
 
 	public static Dictionary<string, string> to_dict() {
 		Dictionary<string, string> info = new Dictionary<string, string>();
@@ -53,7 +53,7 @@ public static class PluginInfo {
 public class TestingPlugin : DDPlugin {
 	private Harmony m_harmony = new Harmony(PluginInfo.GUID);
 
-	protected override void awake() {
+	protected void Awake() {
 		logger = this.Logger;
 		try {
 			this.m_plugin_info = PluginInfo.to_dict();

@@ -15,7 +15,8 @@
 	    <NexusFiles Include="$(ProjectDir)\nexus\**\*.*" />
     </ItemGroup>
     <Delete Files="$(BepInExPath)\plugins\nexus\$(AssemblyName)\generated.txt" />
-	  <Copy SourceFiles="@(AllFiles)" DestinationFolder="$(GamePath)\BepInEx\plugins\%(RecursiveDir)" />
+    <MakeDir Directories="$(GamePath)\BepInEx\ecs_plugins" />
+    <Copy SourceFiles="@(AllFiles)" DestinationFolder="$(GamePath)\BepInEx\ecs_plugins\%(RecursiveDir)" />
 	  <MakeDir Directories="$(GamePath)\BepInEx\plugins\nexus\$(AssemblyName)" />
 	  <Copy SourceFiles="@(NexusFiles)" DestinationFolder="$(GamePath)\BepInEx\plugins\nexus\$(AssemblyName)\%(RecursiveDir)" />
     <Delete Files="$(ProjectDir)\bin\$(TargetName).zip" />

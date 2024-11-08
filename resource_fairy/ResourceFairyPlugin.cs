@@ -15,6 +15,7 @@ using Utility.EnumsStorage;
 using Components;
 using TMPro;
 using UnityEngine.SceneManagement;
+using Systems.InputSystems;
 
 public static class PluginInfo {
 
@@ -40,12 +41,13 @@ public static class PluginInfo {
 }
 
 [BepInPlugin(PluginInfo.GUID, PluginInfo.TITLE, PluginInfo.VERSION)]
-public class ResourceFairyPlugin : DDPlugin, ResourceFairyInterface {
+public class ResourceFairyPlugin : DDPlugin {
 	private Harmony m_harmony = new Harmony(PluginInfo.GUID);
-
-	protected override void awake() {
+	
+	public void ecs_load() {
 		logger = this.Logger;
 		try {
+			logger.LogInfo($"Loading ECS plugin [{PluginInfo.TITLE} {PluginInfo.VERSION}]");
 			this.m_plugin_info = PluginInfo.to_dict();
 			Settings.Instance.load(this);
 			DDPlugin.set_log_level(Settings.m_log_level.Value);
@@ -53,13 +55,8 @@ public class ResourceFairyPlugin : DDPlugin, ResourceFairyInterface {
 			this.m_harmony.PatchAll();
 			DDPlugin._info_log($"{PluginInfo.GUID} v{PluginInfo.VERSION} loaded.");
 		} catch (Exception e) {
-			logger.LogError("** awake FATAL - " + e);
+			logger.LogError("** load FATAL - " + e);
 		}
-	}
-
-	public int testfunc(string text) {
-		DDPlugin._debug_log($"From my pal: '{text}'");
-		return 123;
 	}
 
 	class ResourceFairy : MonoBehaviour {
@@ -77,28 +74,6 @@ public class ResourceFairyPlugin : DDPlugin, ResourceFairyInterface {
         private void Awake() {
 			this.StartCoroutine(this.main_routine());
 		}
-
-        [HarmonyPatch(typeof(Systems.InputSystems.PlayerInputManager), "Update")]
-        class HarmonyPatch_PlayerInputManager_Update {
-			//static GameObject m_parent = null;
-			private static void Postfix() {
-				//DDPlugin._debug_log($"Instance: {DDPlugin.Instance}");
-				//if (m_parent != null) {
-				//	return;
-				//}
-				//m_parent = new GameObject("TestObject");
-				//m_parent.transform.SetParent(null);
-				//Scene scene = SceneManager.CreateScene("DDPlugin_Scene");
-				//SceneManager.MoveGameObjectToScene(m_parent, scene);
-				//foreach (GameObject root in SceneManager.GetActiveScene().GetRootGameObjects()) {
-				//	DDPlugin._debug_log(root.name);
-				//	m_parent = new GameObject("TestObject");
-				//	m_parent.transform.SetParent(root.transform);
-				//	GameObject.DontDestroyOnLoad(m_parent);
-				//	break;
-				//}
-			}
-        }
 
 		[HarmonyPatch(typeof(DayCycleSystem), "OnStartRunning")]
 		class HarmonyPatch_DayCycleSystem_OnStartRunning {
