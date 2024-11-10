@@ -66,7 +66,7 @@ public class ResourceFairyPlugin : DDPlugin {
 		[HarmonyPatch(typeof(GameCursorController), "StartInit")]
 		class HarmonyPatch_GameCursorController_StartInit {
 			private static bool Prefix(GameCursorController __instance) {
-				__instance.gameObject.AddComponent<ResourceFairy>();
+				//__instance.gameObject.AddComponent<ResourceFairy>();
 				return true;
 			}
 		}
