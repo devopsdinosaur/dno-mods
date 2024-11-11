@@ -58,7 +58,7 @@ public class ResourceFairyPlugin : DDPlugin {
 			logger.LogError("** load FATAL - " + e);
 		}
 	}
-
+	/*
 	class ResourceFairy : MonoBehaviour {
 		static DayCycleSystem m_daycycle_system = null;
 		static bool m_is_running = false;
@@ -437,4 +437,5 @@ public class ResourceFairyPlugin : DDPlugin {
 			}
 		}
 	}
+	*/
 }

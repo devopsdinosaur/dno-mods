@@ -17,57 +17,6 @@ public interface DDPluginInterface {
 }
 
 public abstract class DDPlugin : BaseUnityPlugin {
-
-    public class Locator {
-        private const string SCENE_NAME = "DDPlugin_Scene";
-        private const string OBJECT_NAME = "DDPlugin_Locator_Object";
-        private static GameObject m_parent = null;
-        private static Scene m_scene;
-
-        public class IdComponent : MonoBehaviour {
-            public DDPluginInterface m_interface = null;
-        }
-
-        private static GameObject ensure_parent_object() {
-            if (m_parent != null) {
-                return m_parent;
-            }
-            foreach (IdComponent id in Resources.FindObjectsOfTypeAll<IdComponent>()) {
-                return (m_parent = id.gameObject);
-            }
-            m_parent = new GameObject(OBJECT_NAME);
-            m_parent.transform.parent = null;
-            m_scene = SceneManager.GetSceneByName(SCENE_NAME);
-            if (!m_scene.IsValid()) {
-                m_scene = SceneManager.CreateScene(SCENE_NAME);
-            }
-            SceneManager.MoveGameObjectToScene(m_parent, m_scene);
-            return m_parent;
-        }
-
-        public static DDPluginInterface locate(string name) {
-            Scene scene = SceneManager.GetSceneByName(SCENE_NAME);
-            if (scene.IsValid()) {
-                UnityEngine.Debug.Log(scene.name);
-                foreach (GameObject root in scene.GetRootGameObjects()) {
-                    UnityEngine.Debug.Log(root.name);
-                    if (root.name == OBJECT_NAME) {
-                        foreach (Component component in root.GetComponents<Component>()) {
-                            UnityEngine.Debug.Log(ReflectionUtils.get_field_value(component, "m_interface"));
-                        }
-                    }
-                }
-            }
-            return null;
-        }
-
-        public static IdComponent register(DDPluginInterface iface) { 
-            IdComponent id = ensure_parent_object().AddComponent<IdComponent>();
-            id.m_interface = iface;
-            return id;
-        }
-    }
-
     public Dictionary<string, string> m_plugin_info = null;
     protected static ManualLogSource logger;
     public enum LogLevel {
@@ -85,13 +34,6 @@ public abstract class DDPlugin : BaseUnityPlugin {
         {"debug", LogLevel.Debug},
     };
     protected static LogLevel m_log_level = LogLevel.Info;
-    
-    //private void Awake() {
-    //    this.awake();
-    //    Locator.register(this);
-    //}
-
-    //protected abstract void awake();
     
     public static LogLevel set_log_level(LogLevel level) {
         _info_log($"Setting log level to {level.ToString().ToUpper()}.");

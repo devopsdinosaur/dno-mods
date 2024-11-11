@@ -16,7 +16,7 @@ public class Settings {
     // General
     public static ConfigEntry<bool> m_enabled;
     public static ConfigEntry<string> m_log_level;
-    public static Dictionary<string, ConfigEntry<float>> m_resource_multipliers = new Dictionary<string, ConfigEntry<float>>();
+    public static Dictionary<string, ConfigEntry<int>> m_resource_amounts = new Dictionary<string, ConfigEntry<int>>();
 
     public void load(DDPlugin plugin) {
         this.m_plugin = plugin;
@@ -24,8 +24,8 @@ public class Settings {
         // General
         m_enabled = this.m_plugin.Config.Bind<bool>("General", "Enabled", true, "Set to false to disable this mod.");
         m_log_level = this.m_plugin.Config.Bind<string>("General", "Log Level", "info", "[Advanced] Logging level, one of: 'none' (no logging), 'error' (only errors), 'warn' (errors and warnings), 'info' (normal logging), 'debug' (extra log messages for debugging issues).  Not case sensitive [string, default info].  Debug level not recommended unless you're noticing issues with the mod.  Changes to this setting require an application restart.");
-        foreach (string key in new string[] {"Food", "Iron", "Money", "Souls", "Stone", "Wood"}) {
-            m_resource_multipliers[key] = this.m_plugin.Config.Bind<float>("General", $"{key} - Multiplier", 1, $"Multiplier for the amount of {key} resource stored (float, default 1 [nothing added], > 1 more resources, < 1 is ignored).");
+        foreach (string key in new string[] {"Food", "Iron", "Stone", "Wood"}) {
+            m_resource_amounts[key] = this.m_plugin.Config.Bind<int>("General", $"{key} - Amount", 1, $"Amount of {key} resource picked up by workers (float, default 1 [game default]).");
         }
     }
 }

@@ -20,8 +20,9 @@ public class TestSystem : SystemBaseSimulation {
     private ResourceFairyPlugin m_plugin;
 	private EntityQuery m_session_time_query;
     private EntityQuery m_busy_workers_query;
+	private ComponentDataFromEntity<WorkerCatchResource> m_catch_resource_data;
 
-    protected override void OnCreateSimulation() {
+	protected override void OnCreateSimulation() {
 		this.m_plugin = new ResourceFairyPlugin();
 		this.m_plugin.ecs_load();
 		this.m_session_time_query = this.GetEntityQuery(new EntityQueryDesc {
@@ -55,31 +56,54 @@ public class TestSystem : SystemBaseSimulation {
 				ComponentType.ReadOnly<Dead>()
 			}
 		});
+		this.m_catch_resource_data = this.GetComponentDataFromEntity<WorkerCatchResource>();
 		this.RequireSingletonForUpdate<CurrentSessionTimeSingleton>();
 		this.RequireSingletonForUpdate<GameRunningSingleton>();
 	}
 
 	protected override void OnUpdateSimulation() {
-		//DDPlugin._debug_log(Time.ElapsedTime);
-		if (this.HasSingleton<WinLoseSingleton>()) {
-			return;
-		}
-		//base.Dependency = WorkerDeliveryIncreaseJob.schedule(this, this.m_busy_workers_query, base.Dependency);
-		EntityTypeHandle entity_handle = this.GetEntityTypeHandle();
-		ComponentTypeHandle<BerryPicker> berry_picker_handle = this.GetComponentTypeHandle<BerryPicker>();
-		ComponentTypeHandle<WorkerCatchResource> worker_catch_resource_handle = this.GetComponentTypeHandle<WorkerCatchResource>();
-		NativeArray<ArchetypeChunk> chunks = this.m_busy_workers_query.CreateArchetypeChunkArray(Allocator.TempJob);
-		foreach (ArchetypeChunk chunk in chunks) {
-			NativeArray<Entity> entities = chunk.GetNativeArray(entity_handle);
-			NativeArray<WorkerCatchResource> resources = chunk.GetNativeArray(worker_catch_resource_handle);
-			DDPlugin._debug_log($"entities: {entities.Length}, resources: {resources.Length}");
-			for (int index = 0; index < entities.Length; index++) {
-				Entity worker_entity = entities[index];
-				WorkerCatchResource resource = (resources.Length > 0 ? resources[index] : default(WorkerCatchResource));
-				DDPlugin._debug_log($"index: {index}, entity: {worker_entity.GetHashCode()}, type: {resource.type}, count: {resource.count}");
+		try {
+			//DDPlugin._debug_log(Time.ElapsedTime);
+			if (this.HasSingleton<WinLoseSingleton>()) {
+				return;
 			}
+			EntityTypeHandle entity_handle = this.GetEntityTypeHandle();
+			ComponentTypeHandle<BerryPicker> berry_picker_handle = this.GetComponentTypeHandle<BerryPicker>(isReadOnly: true);
+			ComponentTypeHandle<WorkerCatchResource> worker_catch_resource_handle = this.GetComponentTypeHandle<WorkerCatchResource>(isReadOnly: false);
+			NativeArray<ArchetypeChunk> chunks = this.m_busy_workers_query.CreateArchetypeChunkArray(Allocator.Temp);
+			foreach (ArchetypeChunk chunk in chunks) {
+				NativeArray<Entity> entities = chunk.GetNativeArray(entity_handle);
+				NativeArray<WorkerCatchResource> resources = chunk.GetNativeArray(worker_catch_resource_handle);
+				if (entities.Length == 0 || resources.Length == 0 || resources[0].count == 0) {
+					continue;
+				}
+				DDPlugin._debug_log($"entities: {entities.Length}, resources: {resources.Length}, type: {resources[0].type}, count: {resources[0].count}");
+				int new_count = -1;
+				switch (resources[0].type) {
+					case ResourceType.Food:
+						if (resources[0].count < Settings.m_resource_amounts["Food"].Value && chunk.Has<BerryPicker>(berry_picker_handle)) {
+							new_count = Settings.m_resource_amounts["Food"].Value;
+						}
+						break;
+				}
+				if (new_count > -1) {
+					DDPlugin._debug_log($"new_count: {new_count}");
+					for (int index = 0; index < entities.Length; index++) {
+						this.m_catch_resource_data[entities[index]] = new WorkerCatchResource() {
+							type = resources[0].type,
+							count = new_count
+						};
+					}
+					//chunk.SetChunkComponentData<WorkerCatchResource>(worker_catch_resource_handle, new WorkerCatchResource() {
+					//	type = resources[0].type,
+					//	count = new_count
+					//});
+				}
+			}
+			//chunks.Dispose();
+		} catch (Exception e) {
+			DDPlugin._error_log("** OnUpdateSimulation ERROR - " + e);
 		}
-		chunks.Dispose();
 	}
 }
 
