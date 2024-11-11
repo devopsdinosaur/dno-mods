@@ -1,5 +1,6 @@
 ﻿using Components;
 using Components.RawComponents;
+using Components.Structs;
 using Components.SingletonComponents;
 using System;
 using System.Collections.Generic;
@@ -13,94 +14,171 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
 using Utility.EnumsStorage;
+using Utility.InterfacesStorage;
 
 [UpdateBefore(typeof(WorkersDeliverySystem))]
 [UpdateInGroup(typeof(ResourceDeliveryGroup))]
 public class TestSystem : SystemBaseSimulation {
-    private ResourceFairyPlugin m_plugin;
-	private EntityQuery m_session_time_query;
-    private EntityQuery m_busy_workers_query;
-	private ComponentDataFromEntity<WorkerCatchResource> m_catch_resource_data;
+	private const float UPDATE_FREQUENCY = 0.1f;
 
+	private ResourceFairyPlugin m_plugin = null;
+	private float m_last_update_time;
+	private EntityQuery m_time_query;
+	private EntityQuery m_food_storage_query;
+	private EntityQuery m_wsi_storage_query;
+	private ComponentDataFromEntity<BuildingBase> m_building_base_data;
+	private ComponentDataFromEntity<StorageBase> m_storage_base_data;
+	private ComponentDataFromEntity<FoodStorage> m_food_storage_data;
+	private ComponentDataFromEntity<IronStorage> m_iron_storage_data;
+	private ComponentDataFromEntity<StoneStorage> m_stone_storage_data;
+	private ComponentDataFromEntity<WoodStorage> m_wood_storage_data;
+	private StorageManager m_storage_manager;
+	
 	protected override void OnCreateSimulation() {
-		this.m_plugin = new ResourceFairyPlugin();
-		this.m_plugin.ecs_load();
-		this.m_session_time_query = this.GetEntityQuery(new EntityQueryDesc {
-			All = new ComponentType[] {ComponentType.ReadOnly<CurrentSessionTimeSingleton>()}
+		if (this.m_plugin == null) {
+			this.m_plugin = new ResourceFairyPlugin();
+			this.m_plugin.ecs_load();
+		}
+		this.m_last_update_time = float.MinValue;
+		this.m_time_query = GetEntityQuery(new EntityQueryDesc {
+			All = new ComponentType[1] {ComponentType.ReadOnly<CurrentSessionTimeSingleton>()},
+			Any = new ComponentType[0],
+			None = new ComponentType[0],
+			Options = EntityQueryOptions.Default
 		});
-		this.m_busy_workers_query = this.GetEntityQuery(new EntityQueryDesc {
-			All = new ComponentType[] {
-				ComponentType.ReadOnly<UnitSizeBase>(),
-				ComponentType.ReadOnly<WorkerTarget>(),
-				ComponentType.ReadOnly<Worker>()
+		this.m_food_storage_query = GetEntityQuery(new EntityQueryDesc {
+			All = new ComponentType[3] {
+				ComponentType.ReadOnly<FoodStorage>(),
+				ComponentType.ReadOnly<StorageBase>(),
+				ComponentType.ReadOnly<BuildingBase>()
 			},
-			Any = new ComponentType[] {
-				ComponentType.ReadOnly<BerryPicker>(),
-				ComponentType.ReadOnly<Gravedigger>(),
-				ComponentType.ReadOnly<Woodcutter>(),
-				ComponentType.ReadOnly<StoneCutter>(),
-				ComponentType.ReadOnly<Steelmaker>(),
-				ComponentType.ReadOnly<SoulBlacksmith>(),
-				ComponentType.ReadOnly<Forester>(),
-				ComponentType.ReadOnly<Builder>(),
-				ComponentType.ReadOnly<Farmer>(),
-				ComponentType.ReadOnly<Fisher>()
-			},
-			None = new ComponentType[] {
-				ComponentType.ReadOnly<DeadInProgress>(),
+			None = new ComponentType[6] {
+				ComponentType.ReadOnly<CurrentBuildingForConstruction>(),
+				ComponentType.ReadOnly<BuildingDestroyRequest>(),
 				ComponentType.ReadOnly<DelayedDestroy>(),
-				ComponentType.ReadOnly<Unemployed>(),
-				ComponentType.ReadOnly<Exploded>(),
-				ComponentType.ReadOnly<InFear>(),
-				ComponentType.ReadOnly<Enemy>(),
-				ComponentType.ReadOnly<Dead>()
+				ComponentType.ReadOnly<IsFullStorage>(),
+				ComponentType.ReadOnly<InConstruction>(),
+				ComponentType.ReadOnly<Market>()
 			}
 		});
-		this.m_catch_resource_data = this.GetComponentDataFromEntity<WorkerCatchResource>();
+		this.m_wsi_storage_query = GetEntityQuery(new EntityQueryDesc {
+			All = new ComponentType[5]
+			{
+				ComponentType.ReadOnly<WoodStorage>(),
+				ComponentType.ReadOnly<StoneStorage>(),
+				ComponentType.ReadOnly<IronStorage>(),
+				ComponentType.ReadOnly<StorageBase>(),
+				ComponentType.ReadOnly<BuildingBase>()
+			},
+			None = new ComponentType[6]
+			{
+				ComponentType.ReadOnly<CurrentBuildingForConstruction>(),
+				ComponentType.ReadOnly<BuildingDestroyRequest>(),
+				ComponentType.ReadOnly<DelayedDestroy>(),
+				ComponentType.ReadOnly<IsFullStorage>(),
+				ComponentType.ReadOnly<InConstruction>(),
+				ComponentType.ReadOnly<Market>()
+			}
+		});
+		this.m_building_base_data = this.GetComponentDataFromEntity<BuildingBase>();
+		this.m_storage_base_data = this.GetComponentDataFromEntity<StorageBase>(false);
+		this.m_food_storage_data = this.GetComponentDataFromEntity<FoodStorage>(false);
+		this.m_iron_storage_data = this.GetComponentDataFromEntity<IronStorage>(false);
+		this.m_stone_storage_data = this.GetComponentDataFromEntity<StoneStorage>(false);
+		this.m_wood_storage_data = this.GetComponentDataFromEntity<WoodStorage>(false);
 		this.RequireSingletonForUpdate<CurrentSessionTimeSingleton>();
 		this.RequireSingletonForUpdate<GameRunningSingleton>();
+		this.m_storage_manager = new StorageManager();
+	}
+
+	public class StorageBuilding {
+
+		public class ResourceInfo {
+			public Entity m_entity;
+			public BuildingType m_building_type;
+			public ResourceType m_resource_type;
+			public int m_current_value = -1;
+			public int m_previous_value = -1;
+			public int m_positive_delta = -1;
+			public int m_capacity = -1;
+			
+			public void update<TStorage>(TStorage data, StorageBase base_data) where TStorage : struct, IComponentData, IResourceStorage {
+				this.m_current_value = data.CurrentAmount();
+				this.m_positive_delta = (this.m_current_value > 0 && this.m_previous_value > -1 ? Mathf.Max(0, this.m_current_value - this.m_previous_value) : 0);
+				this.m_previous_value = this.m_current_value;
+				switch (this.m_resource_type) {
+					case ResourceType.Food:
+						this.m_capacity = base_data.value.Value.foodCapacity;
+						break;
+					case ResourceType.Iron:
+					case ResourceType.Stone:
+					case ResourceType.Wood:
+						this.m_capacity = base_data.value.Value.woodStoneIronCapacity;
+						break;
+				}
+				if (this.m_positive_delta != 0) {
+					DDPlugin._debug_log($"[{this.m_resource_type}] entity: {this.m_entity.GetHashCode()}, count: {this.m_current_value}, positive_delta: {this.m_positive_delta}, capacity: {this.m_capacity}");
+				}
+			}
+		}
+
+		public Entity m_entity;
+		public BuildingType m_building_type;
+		public Dictionary<ResourceType, ResourceInfo> m_resources = new Dictionary<ResourceType, ResourceInfo>();
+		
+		public StorageBuilding(Entity entity, ComponentDataFromEntity<StorageBase> base_data, ComponentDataFromEntity<BuildingBase> building_data) {
+			this.m_entity = entity;
+			this.m_building_type = building_data[entity].value.Value.type;
+			foreach (ResourceType key in Enum.GetValues(typeof(ResourceType))) {
+				this.m_resources[key] = new ResourceInfo() {
+					m_entity = entity,
+					m_building_type = this.m_building_type,
+					m_resource_type = key
+				};
+			}
+			DDPlugin._debug_log($"Added new building - entity: {entity.GetHashCode()}, type: {this.m_building_type}, food_capacity: {base_data[entity].value.Value.foodCapacity}, wsi_capacity: {base_data[entity].value.Value.woodStoneIronCapacity}");
+		}
+
+		public void update<TStorage>(ResourceType resource_type, ComponentDataFromEntity<TStorage> storage_data, ComponentDataFromEntity<StorageBase> base_data) where TStorage : struct, IComponentData, IResourceStorage {
+			this.m_resources[resource_type].update<TStorage>(storage_data[this.m_entity], base_data[this.m_entity]);
+		}
+	}
+
+	public class StorageManager {
+		private Dictionary<Entity, StorageBuilding> m_buildings = new Dictionary<Entity, StorageBuilding>();
+		private List<BuildingType> m_capacity_modified_building_types = new List<BuildingType>();
+
+		public void update<TStorage>(ResourceType resource_type, EntityQuery query, ComponentDataFromEntity<TStorage> storage_data, ComponentDataFromEntity<StorageBase> base_data, ComponentDataFromEntity<BuildingBase> building_data) where TStorage : struct, IComponentData, IResourceStorage {
+			foreach (Entity entity in query.ToEntityArray(Allocator.Temp)) {
+				if (!this.m_buildings.TryGetValue(entity, out StorageBuilding building)) {
+					building = this.m_buildings[entity] = new StorageBuilding(entity, base_data, building_data);
+					if (!this.m_capacity_modified_building_types.Contains(building.m_building_type)) {
+						base_data[entity].value.Value.foodCapacity = Mathf.CeilToInt(base_data[entity].value.Value.foodCapacity * Settings.m_capacity_multipliers["Food"].Value);
+						base_data[entity].value.Value.woodStoneIronCapacity = Mathf.CeilToInt(base_data[entity].value.Value.woodStoneIronCapacity * Settings.m_capacity_multipliers["Wood_Stone_Iron"].Value);
+						DDPlugin._debug_log($"Changing building storage capacity - type: {building.m_building_type}, food_capacity: {base_data[entity].value.Value.foodCapacity}, wsi_capacity: {base_data[entity].value.Value.woodStoneIronCapacity}");
+						this.m_capacity_modified_building_types.Add(building.m_building_type);
+					}
+				}
+				building.update<TStorage>(resource_type, storage_data, base_data);
+			}
+		}
 	}
 
 	protected override void OnUpdateSimulation() {
 		try {
-			//DDPlugin._debug_log(Time.ElapsedTime);
 			if (this.HasSingleton<WinLoseSingleton>()) {
 				return;
 			}
-			EntityTypeHandle entity_handle = this.GetEntityTypeHandle();
-			ComponentTypeHandle<BerryPicker> berry_picker_handle = this.GetComponentTypeHandle<BerryPicker>(isReadOnly: true);
-			ComponentTypeHandle<WorkerCatchResource> worker_catch_resource_handle = this.GetComponentTypeHandle<WorkerCatchResource>(isReadOnly: false);
-			NativeArray<ArchetypeChunk> chunks = this.m_busy_workers_query.CreateArchetypeChunkArray(Allocator.Temp);
-			foreach (ArchetypeChunk chunk in chunks) {
-				NativeArray<Entity> entities = chunk.GetNativeArray(entity_handle);
-				NativeArray<WorkerCatchResource> resources = chunk.GetNativeArray(worker_catch_resource_handle);
-				if (entities.Length == 0 || resources.Length == 0 || resources[0].count == 0) {
-					continue;
-				}
-				DDPlugin._debug_log($"entities: {entities.Length}, resources: {resources.Length}, type: {resources[0].type}, count: {resources[0].count}");
-				int new_count = -1;
-				switch (resources[0].type) {
-					case ResourceType.Food:
-						if (resources[0].count < Settings.m_resource_amounts["Food"].Value && chunk.Has<BerryPicker>(berry_picker_handle)) {
-							new_count = Settings.m_resource_amounts["Food"].Value;
-						}
-						break;
-				}
-				if (new_count > -1) {
-					DDPlugin._debug_log($"new_count: {new_count}");
-					for (int index = 0; index < entities.Length; index++) {
-						this.m_catch_resource_data[entities[index]] = new WorkerCatchResource() {
-							type = resources[0].type,
-							count = new_count
-						};
-					}
-					//chunk.SetChunkComponentData<WorkerCatchResource>(worker_catch_resource_handle, new WorkerCatchResource() {
-					//	type = resources[0].type,
-					//	count = new_count
-					//});
-				}
+			float elapsed = this.m_time_query.GetSingleton<CurrentSessionTimeSingleton>().elapsedTime;
+			if (!(this.m_last_update_time > elapsed || elapsed - this.m_last_update_time > UPDATE_FREQUENCY)) {
+				return;
 			}
-			//chunks.Dispose();
+			this.m_last_update_time = elapsed;
+			//DDPlugin._debug_log($"elapsed: {elapsed}");
+			this.m_storage_manager.update<FoodStorage>(ResourceType.Food, this.m_food_storage_query, this.m_food_storage_data, this.m_storage_base_data, this.m_building_base_data);
+			this.m_storage_manager.update<IronStorage>(ResourceType.Iron, this.m_wsi_storage_query, this.m_iron_storage_data, this.m_storage_base_data, this.m_building_base_data);
+			this.m_storage_manager.update<StoneStorage>(ResourceType.Stone, this.m_wsi_storage_query, this.m_stone_storage_data, this.m_storage_base_data, this.m_building_base_data);
+			this.m_storage_manager.update<WoodStorage>(ResourceType.Wood, this.m_wsi_storage_query, this.m_wood_storage_data, this.m_storage_base_data, this.m_building_base_data);
 		} catch (Exception e) {
 			DDPlugin._error_log("** OnUpdateSimulation ERROR - " + e);
 		}
