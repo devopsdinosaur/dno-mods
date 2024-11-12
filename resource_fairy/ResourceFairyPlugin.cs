@@ -23,7 +23,7 @@ public static class PluginInfo {
 	public const string NAME = "resource_fairy";
 	public const string SHORT_DESCRIPTION = "Configurable multipliers for changing the amount of resources received.  More options to come for increasing max storage/population/etc!";
 
-	public const string VERSION = "0.0.4";
+	public const string VERSION = "0.0.5";
 
 	public const string AUTHOR = "devopsdinosaur";
 	public const string GAME_TITLE = "Diplomacy is Not an Option";
@@ -52,7 +52,7 @@ public class ResourceFairyPlugin : DDPlugin {
 			Settings.Instance.load(this);
 			DDPlugin.set_log_level(Settings.m_log_level.Value);
 			this.create_nexus_page();
-			this.m_harmony.PatchAll();
+			//this.m_harmony.PatchAll();
 			DDPlugin._info_log($"{PluginInfo.GUID} v{PluginInfo.VERSION} loaded.");
 		} catch (Exception e) {
 			logger.LogError("** load FATAL - " + e);

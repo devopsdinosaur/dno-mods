@@ -63,10 +63,10 @@ public class TestSystem : SystemBaseSimulation {
 	private EntityQuery m_wsi_storage_query;
 	private ComponentDataFromEntity<BuildingBase> m_building_base_data;
 	private ComponentDataFromEntity<StorageBase> m_storage_base_data;
-	private ComponentDataFromEntity<FoodStorage> m_food_storage_data;
-	private ComponentDataFromEntity<IronStorage> m_iron_storage_data;
-	private ComponentDataFromEntity<StoneStorage> m_stone_storage_data;
-	private ComponentDataFromEntity<WoodStorage> m_wood_storage_data;
+	public ComponentDataFromEntity<FoodStorage> m_food_storage_data;
+	public ComponentDataFromEntity<IronStorage> m_iron_storage_data;
+	public ComponentDataFromEntity<StoneStorage> m_stone_storage_data;
+	public ComponentDataFromEntity<WoodStorage> m_wood_storage_data;
 	private StorageManager m_storage_manager;
 	
 	protected override void OnCreateSimulation() {
@@ -151,7 +151,16 @@ public class TestSystem : SystemBaseSimulation {
 						this.m_capacity -= this.m_current_value;
 						break;
 				}
-                DDPlugin._debug_log($"[{this.m_resource_type}] entity: {this.m_entity.GetHashCode()}, count: {this.m_current_value}, positive_delta: {this.m_positive_delta}, capacity: {this.m_capacity}");
+				int bonus = Mathf.Min(this.m_capacity, Mathf.CeilToInt(this.m_positive_delta * SettingsWrapper.Instance.m_resource_multipliers[this.m_resource_type]) - this.m_positive_delta);
+                DDPlugin._debug_log($"[{this.m_resource_type}] entity: {this.m_entity.GetHashCode()}, count: {this.m_current_value}, positive_delta: {this.m_positive_delta}, capacity: {this.m_capacity}, bonus: {bonus}");
+				if (bonus <= 0) {
+					return;
+				}
+				switch (this.m_resource_type) {
+					case ResourceType.Food:
+						sdfg
+						break;
+				}
             }
 
             public void update<TStorage>(TStorage data, StorageBase base_data) where TStorage : struct, IComponentData, IResourceStorage {
