@@ -21,6 +21,41 @@ using Utility.InterfacesStorage;
 public class TestSystem : SystemBaseSimulation {
 	private const float UPDATE_FREQUENCY = 0.1f;
 
+	public class SettingsWrapper {
+		private static SettingsWrapper m_instance = null;
+		public static SettingsWrapper Instance {
+			get {
+				if (m_instance == null) {
+					m_instance = new SettingsWrapper();
+				}
+				return m_instance;
+			}
+		}
+		public Dictionary<ResourceType, float> m_resource_multipliers = new Dictionary<ResourceType, float>();
+        public Dictionary<ResourceType, float> m_capacity_multipliers = new Dictionary<ResourceType, float>();
+
+		public SettingsWrapper() {
+			foreach (string key in Settings.m_resource_multipliers.Keys) {
+				if (Enum.TryParse<ResourceType>(key, out ResourceType resource_type)) {
+					this.m_resource_multipliers[resource_type] = Settings.m_resource_multipliers[key].Value;
+					continue;
+				}
+				DDPlugin._error_log($"** Settings ERROR - unknown resource multiplier key '{key}'.");
+			}
+            foreach (string key in Settings.m_capacity_multipliers.Keys) {
+				if (!Enum.TryParse<ResourceType>(key, out ResourceType resource_type)) {
+					if (key == "Wood_Stone_Iron") {
+						resource_type = ResourceType.Wood;
+					} else {
+                        DDPlugin._error_log($"** Settings ERROR - unknown storage capacity multiplier key '{key}'.");
+						continue;
+                    }
+				}
+				this.m_capacity_multipliers[resource_type] = Settings.m_capacity_multipliers[key].Value;
+            }
+        }
+    }
+
 	private ResourceFairyPlugin m_plugin = null;
 	private float m_last_update_time;
 	private EntityQuery m_time_query;
@@ -97,15 +132,36 @@ public class TestSystem : SystemBaseSimulation {
 			public Entity m_entity;
 			public BuildingType m_building_type;
 			public ResourceType m_resource_type;
-			public int m_current_value = -1;
+			public int m_current_value = 0;
 			public int m_previous_value = -1;
-			public int m_positive_delta = -1;
-			public int m_capacity = -1;
-			
-			public void update<TStorage>(TStorage data, StorageBase base_data) where TStorage : struct, IComponentData, IResourceStorage {
+			public int m_positive_delta = 0;
+			public int m_capacity = 0;
+
+			public void add_bonus_resources(int wsi_value) {
+				if (this.m_positive_delta <= 0) {
+					return;
+				}
+				switch (this.m_resource_type) {
+					case ResourceType.Wood:
+					case ResourceType.Stone:
+					case ResourceType.Iron:
+						this.m_capacity -= wsi_value;
+						break;
+					default:
+						this.m_capacity -= this.m_current_value;
+						break;
+				}
+                DDPlugin._debug_log($"[{this.m_resource_type}] entity: {this.m_entity.GetHashCode()}, count: {this.m_current_value}, positive_delta: {this.m_positive_delta}, capacity: {this.m_capacity}");
+            }
+
+            public void update<TStorage>(TStorage data, StorageBase base_data) where TStorage : struct, IComponentData, IResourceStorage {
 				this.m_current_value = data.CurrentAmount();
 				this.m_positive_delta = (this.m_current_value > 0 && this.m_previous_value > -1 ? Mathf.Max(0, this.m_current_value - this.m_previous_value) : 0);
 				this.m_previous_value = this.m_current_value;
+                if (this.m_positive_delta == 0) {
+                    return;
+                }
+                this.m_capacity = 0;
 				switch (this.m_resource_type) {
 					case ResourceType.Food:
 						this.m_capacity = base_data.value.Value.foodCapacity;
@@ -115,9 +171,6 @@ public class TestSystem : SystemBaseSimulation {
 					case ResourceType.Wood:
 						this.m_capacity = base_data.value.Value.woodStoneIronCapacity;
 						break;
-				}
-				if (this.m_positive_delta != 0) {
-					DDPlugin._debug_log($"[{this.m_resource_type}] entity: {this.m_entity.GetHashCode()}, count: {this.m_current_value}, positive_delta: {this.m_positive_delta}, capacity: {this.m_capacity}");
 				}
 			}
 		}
@@ -139,7 +192,14 @@ public class TestSystem : SystemBaseSimulation {
 			DDPlugin._debug_log($"Added new building - entity: {entity.GetHashCode()}, type: {this.m_building_type}, food_capacity: {base_data[entity].value.Value.foodCapacity}, wsi_capacity: {base_data[entity].value.Value.woodStoneIronCapacity}");
 		}
 
-		public void update<TStorage>(ResourceType resource_type, ComponentDataFromEntity<TStorage> storage_data, ComponentDataFromEntity<StorageBase> base_data) where TStorage : struct, IComponentData, IResourceStorage {
+        public void add_bonus_resources() {
+			int wsi_value = this.m_resources[ResourceType.Wood].m_current_value + this.m_resources[ResourceType.Stone].m_current_value + this.m_resources[ResourceType.Iron].m_current_value;
+			foreach (ResourceInfo resource in this.m_resources.Values) {
+				resource.add_bonus_resources(wsi_value);
+            }
+        }
+
+        public void update<TStorage>(ResourceType resource_type, ComponentDataFromEntity<TStorage> storage_data, ComponentDataFromEntity<StorageBase> base_data) where TStorage : struct, IComponentData, IResourceStorage {
 			this.m_resources[resource_type].update<TStorage>(storage_data[this.m_entity], base_data[this.m_entity]);
 		}
 	}
@@ -148,13 +208,19 @@ public class TestSystem : SystemBaseSimulation {
 		private Dictionary<Entity, StorageBuilding> m_buildings = new Dictionary<Entity, StorageBuilding>();
 		private List<BuildingType> m_capacity_modified_building_types = new List<BuildingType>();
 
+		public void add_bonus_resources() {
+			foreach (StorageBuilding building in this.m_buildings.Values) {
+				building.add_bonus_resources();
+			}
+		}
+
 		public void update<TStorage>(ResourceType resource_type, EntityQuery query, ComponentDataFromEntity<TStorage> storage_data, ComponentDataFromEntity<StorageBase> base_data, ComponentDataFromEntity<BuildingBase> building_data) where TStorage : struct, IComponentData, IResourceStorage {
 			foreach (Entity entity in query.ToEntityArray(Allocator.Temp)) {
 				if (!this.m_buildings.TryGetValue(entity, out StorageBuilding building)) {
 					building = this.m_buildings[entity] = new StorageBuilding(entity, base_data, building_data);
 					if (!this.m_capacity_modified_building_types.Contains(building.m_building_type)) {
-						base_data[entity].value.Value.foodCapacity = Mathf.CeilToInt(base_data[entity].value.Value.foodCapacity * Settings.m_capacity_multipliers["Food"].Value);
-						base_data[entity].value.Value.woodStoneIronCapacity = Mathf.CeilToInt(base_data[entity].value.Value.woodStoneIronCapacity * Settings.m_capacity_multipliers["Wood_Stone_Iron"].Value);
+						base_data[entity].value.Value.foodCapacity = Mathf.CeilToInt(base_data[entity].value.Value.foodCapacity * SettingsWrapper.Instance.m_capacity_multipliers[ResourceType.Food]);
+						base_data[entity].value.Value.woodStoneIronCapacity = Mathf.CeilToInt(base_data[entity].value.Value.woodStoneIronCapacity * SettingsWrapper.Instance.m_capacity_multipliers[ResourceType.Wood]);
 						DDPlugin._debug_log($"Changing building storage capacity - type: {building.m_building_type}, food_capacity: {base_data[entity].value.Value.foodCapacity}, wsi_capacity: {base_data[entity].value.Value.woodStoneIronCapacity}");
 						this.m_capacity_modified_building_types.Add(building.m_building_type);
 					}
@@ -179,6 +245,7 @@ public class TestSystem : SystemBaseSimulation {
 			this.m_storage_manager.update<IronStorage>(ResourceType.Iron, this.m_wsi_storage_query, this.m_iron_storage_data, this.m_storage_base_data, this.m_building_base_data);
 			this.m_storage_manager.update<StoneStorage>(ResourceType.Stone, this.m_wsi_storage_query, this.m_stone_storage_data, this.m_storage_base_data, this.m_building_base_data);
 			this.m_storage_manager.update<WoodStorage>(ResourceType.Wood, this.m_wsi_storage_query, this.m_wood_storage_data, this.m_storage_base_data, this.m_building_base_data);
+			this.m_storage_manager.add_bonus_resources();		
 		} catch (Exception e) {
 			DDPlugin._error_log("** OnUpdateSimulation ERROR - " + e);
 		}
