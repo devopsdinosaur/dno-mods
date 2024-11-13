@@ -43,35 +43,38 @@ public class StorageResourceInfo {
 		}
 		switch (this.m_resource_type) {
 			case ResourceType.Food:
-				this.increase_value(this.m_building.m_manager.m_data.m_food_storage, this.m_building.m_manager.m_data.m_food_ui, this.m_building.m_manager.m_system.GetSingletonEntity<CurrentFood>(), bonus);
+				this.increase_value(this.m_building.m_manager.m_data.m_food_storage, this.m_building.m_manager.m_data.m_food_ui, this.m_building.m_manager.m_ui_entities[ResourceType.Food], bonus);
 				break;
 			case ResourceType.Iron:
-				this.increase_value(this.m_building.m_manager.m_data.m_iron_storage, this.m_building.m_manager.m_data.m_iron_ui, this.m_building.m_manager.m_system.GetSingletonEntity<CurrentIron>(), bonus);
+				this.increase_value(this.m_building.m_manager.m_data.m_iron_storage, this.m_building.m_manager.m_data.m_iron_ui, this.m_building.m_manager.m_ui_entities[ResourceType.Iron], bonus);
 				break;
 			case ResourceType.Stone:
-				this.increase_value(this.m_building.m_manager.m_data.m_stone_storage, this.m_building.m_manager.m_data.m_stone_ui, this.m_building.m_manager.m_system.GetSingletonEntity<CurrentStone>(), bonus);
+				this.increase_value(this.m_building.m_manager.m_data.m_stone_storage, this.m_building.m_manager.m_data.m_stone_ui, this.m_building.m_manager.m_ui_entities[ResourceType.Stone], bonus);
 				break;
 			case ResourceType.Wood:
-				this.increase_value(this.m_building.m_manager.m_data.m_wood_storage, this.m_building.m_manager.m_data.m_wood_ui, this.m_building.m_manager.m_system.GetSingletonEntity<CurrentWood>(), bonus);
+				this.increase_value(this.m_building.m_manager.m_data.m_wood_storage, this.m_building.m_manager.m_data.m_wood_ui, this.m_building.m_manager.m_ui_entities[ResourceType.Wood], bonus);
 				break;
 		}
 	}
 
 	private void increase_value<TStorage, TUi>(ComponentDataFromEntity<TStorage> storage_data, ComponentDataFromEntity<TUi> ui_data, Entity ui_entity, int delta) where TStorage : struct, IComponentData, IResourceStorage where TUi : struct, IComponentData, IUserUIResource {
-		// Reference: WorkerDeliveryProcessJob.ApplyResource (line 1381)
 		TStorage stat = storage_data[this.m_entity];
 		stat.IncreaseAmount(delta);
 		storage_data[this.m_entity] = stat;
-		Utility.ResourceUtility.ChangeCurrentResourceValue(ui_data, ui_entity, delta);
+		if (ui_data.HasComponent(ui_entity)) {
+			Utility.ResourceUtility.ChangeCurrentResourceValue(ui_data, ui_entity, delta);
+		}
 		this.m_storage.m_current_value = this.m_storage.m_previous_value = storage_data[this.m_entity].CurrentAmount();
 		DDPlugin._debug_log($"Increased entity {this.m_entity.GetHashCode()}'s {this.m_resource_type} storage value by {delta} to {storage_data[this.m_entity].CurrentAmount()}.");
 	}
 
-	public void update<TStorage, TReserve>(TStorage storage_data, TReserve reserve_data) where TStorage : struct, IComponentData, IResourceStorage where TReserve : struct, IComponentData, IResourceReserve {
-		this.m_storage.m_current_value = storage_data.CurrentAmount();
+	public void update<TStorage, TReserve>(ComponentDataFromEntity<TStorage> storage_data, ComponentDataFromEntity<TReserve> reserve_data) where TStorage : struct, IComponentData, IResourceStorage where TReserve : struct, IComponentData, IResourceReserve {
+		this.m_storage.m_current_value = storage_data[this.m_entity].CurrentAmount();
         this.m_storage.m_positive_delta = (this.m_storage.m_current_value > 0 && this.m_storage.m_previous_value > -1 ? Mathf.Max(0, this.m_storage.m_current_value - this.m_storage.m_previous_value) : 0);
         this.m_storage.m_previous_value = this.m_storage.m_current_value;
-		this.m_reserves.m_current_value = reserve_data.CurrentReserve();
+		if (reserve_data.HasComponent(this.m_entity)) {
+			this.m_reserves.m_current_value = reserve_data[this.m_entity].CurrentReserve();
+		}
         if (this.m_storage.m_positive_delta == 0) {
             return;
         }

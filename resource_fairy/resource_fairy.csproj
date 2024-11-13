@@ -4,7 +4,7 @@
   <ItemGroup>
     <Content Include="$(BepInExPath)\LogOutput.log" Link="logs\LogOutput.log" />
 	  <Content Include="$(BepInExPath)\config\$(AssemblyName).cfg" Link="config\$(AssemblyName).cfg" />
-    <Content Include="$(BepInExPath)\plugins\nexus\$(AssemblyName)\generated.txt" Link="nexus\generated.txt" />
+    <Content Include="$(BepInExPath)\ecs_plugins\nexus\$(AssemblyName)\generated.txt" Link="nexus\generated.txt" />
   </ItemGroup>
   <ItemGroup>
 	<Compile Include="..\shared\dd_utils.cs" Link="shared\dd_utils.cs" />
@@ -17,10 +17,11 @@
     <Delete Files="$(BepInExPath)\plugins\nexus\$(AssemblyName)\generated.txt" />
     <MakeDir Directories="$(GamePath)\BepInEx\ecs_plugins" />
     <Copy SourceFiles="@(AllFiles)" DestinationFolder="$(GamePath)\BepInEx\ecs_plugins\%(RecursiveDir)" />
-	  <MakeDir Directories="$(GamePath)\BepInEx\plugins\nexus\$(AssemblyName)" />
-	  <Copy SourceFiles="@(NexusFiles)" DestinationFolder="$(GamePath)\BepInEx\plugins\nexus\$(AssemblyName)\%(RecursiveDir)" />
+	  <MakeDir Directories="$(GamePath)\BepInEx\ecs_plugins\nexus\$(AssemblyName)" />
+	  <Copy SourceFiles="@(NexusFiles)" DestinationFolder="$(GamePath)\BepInEx\ecs_plugins\nexus\$(AssemblyName)\%(RecursiveDir)" />
     <Delete Files="$(ProjectDir)\bin\$(TargetName).zip" />
-    <Copy SourceFiles="@(AllFiles)" DestinationFolder="$(TargetDir)..\Release\%(RecursiveDir)"></Copy>
+    <MakeDir Directories="$(TargetDir)..\Release\BepInEx\ecs_plugins" />
+    <Copy SourceFiles="@(AllFiles)" DestinationFolder="$(TargetDir)..\Release\BepInEx\ecs_plugins\%(RecursiveDir)"></Copy>
     <ZipDirectory SourceDirectory="$(TargetDir)..\Release" DestinationFile="$(ProjectDir)\bin\$(TargetName).zip" />
     <RemoveDir Directories="$(TargetDir)..\Release" />
   </Target>

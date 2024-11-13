@@ -5,7 +5,12 @@ Current Version: [[version]] ([url=https://github.com/[[author]]/[[repo]]/blob/m
 
 [[short_description]]
 
-For those (few) using the previous version, you'll notice the config file is changed to reflect the removal of the "Daily" aspect of this mod.  Since all the settings changed, you can safely delete the config file, start the game, quit, then there will be a nice new one with the new settings!
+[b]Very Important Notes[/b]
+[list]
+[*]This plugin (and any others for this game) use the Unity DOTS/ECS system that is *not* supported by the baseline BepInEx.  Follow the Installation instructions below.
+[*]If you have used a previous version of this mod then you'll need to delete the old BepInEx folder.  If you don't then the old version of this plugin will be launched in addition to this one and cause some issues.
+[*]Be sure to follow the instructions below, as they are a little different than my usual.
+[/list]
 
 See the config options below for a complete list of features and how to use them.  If you have ideas or issues see the [i]Source Code and Bug Reporting[/i] section at the bottom of the page.  Thanks!
 
@@ -14,7 +19,7 @@ See the config options below for a complete list of features and how to use them
 [list=1]
 [*][url=https://www.nexusmods.com/diplomacyisnotanoption/mods/1]Install BepInEx[/url]﻿
 [*]Download and extract this mod.
-[*]Copy the extracted files to [i]<[[game]]-home>/BepInEx/plugins[/i] folder.
+[*]Copy the extracted files to [i]<[[game]]-home>[/i] folder.
 [*]Start the game and exit.
 [*]Change configuration options (see below).
 [*]Once you have the settings you want, start the game again and enjoy!

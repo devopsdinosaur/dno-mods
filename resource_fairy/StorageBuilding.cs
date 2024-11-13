@@ -34,6 +34,6 @@ public class StorageBuilding {
 	}
 
 	public void update<TStorage, TReserve>(ResourceType resource_type, ComponentDataFromEntity<TStorage> storage_data, ComponentDataFromEntity<TReserve> reserve_data) where TStorage : struct, IComponentData, IResourceStorage where TReserve : struct, IComponentData, IResourceReserve {
-		this.m_resources[resource_type].update(storage_data[this.m_entity], reserve_data[this.m_entity]);
+		this.m_resources[resource_type].update(storage_data, reserve_data);
 	}
 }
