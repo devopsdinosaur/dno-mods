@@ -1,4 +1,13 @@
-﻿# 0.0.3
+﻿# 0.0.5
+
+## Features
+- Full rebuild into an ECS system-based plugin that should work cleanly with the game architecture
+
+
+# 0.0.4
+... shrug
+
+# 0.0.3
 
 ## Bug Fixes
 - Pretty much everything was broken.  Reworked the system to just use multipliers to increase the amount of resources gained with each increase.
