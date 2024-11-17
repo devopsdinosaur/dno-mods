@@ -10,7 +10,7 @@ public static class PluginInfo {
 	public const string NAME = "resource_fairy";
 	public const string SHORT_DESCRIPTION = "Configurable multipliers for changing the amount of resources received.  More options to come for increasing max storage/population/etc!";
 
-	public const string VERSION = "0.0.5";
+	public const string VERSION = "0.0.6";
 
 	public const string AUTHOR = "devopsdinosaur";
 	public const string GAME_TITLE = "Diplomacy is Not an Option";

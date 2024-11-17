@@ -1,4 +1,16 @@
-﻿# 0.0.5
+﻿# 0.0.7
+
+## Bug Fixes
+- Resolved issue in which capacity increases were multiplying beyond expectations when reloading
+
+
+# 0.0.6
+
+## Bug Fixes
+- Resolved insue in which capacity increases were applying only to lvl 1 buildings
+
+
+# 0.0.5
 
 ## Features
 - Full rebuild into an ECS system-based plugin that should work cleanly with the game architecture

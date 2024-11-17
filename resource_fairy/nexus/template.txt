@@ -1,9 +1,9 @@
 ﻿
 [size=4][b][u]Description[/u][/b][/size]
 
-Current Version: [[version]] ([url=https://github.com/[[author]]/[[repo]]/blob/master/[[name]]/changelog.md]changelog[/url])
-
 [[short_description]]
+
+[url=https://github.com/[[author]]/[[repo]]/blob/master/[[name]]/changelog.md]Changelog[/url]
 
 [b]Very Important Notes[/b]
 [list]

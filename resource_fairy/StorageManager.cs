@@ -111,7 +111,6 @@ public class StorageManager {
 	}
 	public __ComponentData__ m_data;
 	private Dictionary<Entity, StorageBuilding> m_buildings = new Dictionary<Entity, StorageBuilding>();
-	private List<BuildingType> m_capacity_modified_building_types = new List<BuildingType>();
 	public Dictionary<ResourceType, Entity> m_ui_entities = null;
 	private Dictionary<ResourceType, StorageResourceInfoUiOnly> m_ui_only_resources = null;
 
@@ -157,11 +156,10 @@ public class StorageManager {
 		foreach (Entity entity in query.ToEntityArray(Allocator.Temp)) {
 			if (!this.m_buildings.TryGetValue(entity, out StorageBuilding building)) {
 				building = this.m_buildings[entity] = new StorageBuilding(this, entity, this.m_data.m_storage_base, this.m_data.m_building_base);
-				if (!this.m_capacity_modified_building_types.Contains(building.m_building_type)) {
+				if (!StorageBuilding.list_contains_type_and_level(PersistentSystem.CapacityModifiedBuildingTypes, building)) {
 					this.m_data.m_storage_base[entity].value.Value.foodCapacity = Mathf.CeilToInt(this.m_data.m_storage_base[entity].value.Value.foodCapacity * Settings.Instance.m_capacity_multipliers[ResourceType.Food]);
 					this.m_data.m_storage_base[entity].value.Value.woodStoneIronCapacity = Mathf.CeilToInt(this.m_data.m_storage_base[entity].value.Value.woodStoneIronCapacity * Settings.Instance.m_capacity_multipliers[ResourceType.Wood]);
-					DDPlugin._debug_log($"Changing building storage capacity - type: {building.m_building_type}, food_capacity: {this.m_data.m_storage_base[entity].value.Value.foodCapacity}, wsi_capacity: {this.m_data.m_storage_base[entity].value.Value.woodStoneIronCapacity}");
-					this.m_capacity_modified_building_types.Add(building.m_building_type);
+					DDPlugin._debug_log($"Changing building storage capacity - type: {building.m_building_type}, level: {building.m_level}, food_capacity: {this.m_data.m_storage_base[entity].value.Value.foodCapacity} (multiplier: {Settings.Instance.m_capacity_multipliers[ResourceType.Food]}), wsi_capacity: {this.m_data.m_storage_base[entity].value.Value.woodStoneIronCapacity} (multiplier: {Settings.Instance.m_capacity_multipliers[ResourceType.Wood]})");
 				}
 			}
 			building.update(resource_type, storage_data, reserve_data);

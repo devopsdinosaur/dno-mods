@@ -1,5 +1,6 @@
 ﻿using Components.SingletonComponents;
 using System;
+using System.Collections.Generic;
 using Systems;
 using Systems.ComponentSystemGroups;
 using Systems.WorkersDeliverySystems;
@@ -10,16 +11,11 @@ using Unity.Entities;
 public class ResourceFairySystem : SystemBaseSimulation {
 	private const float UPDATE_FREQUENCY = 0.1f;
 
-	private ResourceFairyPlugin m_plugin = null;
 	private float m_last_update_time;
 	private EntityQuery m_time_query;
 	private StorageManager m_storage_manager;
 	
 	protected override void OnCreateSimulation() {
-		if (this.m_plugin == null) {
-			this.m_plugin = new ResourceFairyPlugin();
-			this.m_plugin.ecs_load();
-		}
 		this.m_last_update_time = float.MinValue;
 		this.m_time_query = GetEntityQuery(new EntityQueryDesc {
 			All = new ComponentType[1] {ComponentType.ReadOnly<CurrentSessionTimeSingleton>()},
